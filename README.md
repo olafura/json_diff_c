@@ -170,6 +170,26 @@ Run tests with:
 meson test -C builddir
 ```
 
+### Performance Profiling
+
+The project includes performance profiling tests based on the Scala implementation:
+
+```bash
+# Run performance profile tests
+meson compile -C builddir profile
+
+# The profile tests require JSON data files in profile-data/ directory:
+# - profile-data/cdc.json
+# - profile-data/edg.json  
+# - profile-data/ModernAtomic.json
+# - profile-data/LegacyAtomic.json
+```
+
+The profile tests measure:
+- Medium-sized JSON diff performance (50 iterations)
+- Large JSON diff performance (single iteration)
+- Array diff and patch performance with 1000 elements
+
 ### Fuzzing
 
 The project includes fuzzing support using libFuzzer to find bugs and edge cases:

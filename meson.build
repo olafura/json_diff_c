@@ -37,6 +37,19 @@ test_exe = executable('test_json_diff',
 # Register test
 test('json_diff_test', test_exe)
 
+# Profile test executable
+profile_exe = executable('test_profile',
+  'test_profile.c',
+  link_with : json_diff_lib,
+  dependencies : [cjson_dep, math_dep],
+  install : false
+)
+
+# Add a custom target for running profile tests
+run_target('profile',
+  command : [profile_exe]
+)
+
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')
 if cc.has_argument('-fsanitize=fuzzer')
