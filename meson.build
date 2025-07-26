@@ -28,7 +28,7 @@ install_headers('src/json_diff.h')
 
 # Test executable
 test_exe = executable('test_json_diff',
-  'tests/test_json_diff.c',
+  'test_json_diff.c',
   link_with : json_diff_lib,
   dependencies : [cjson_dep, math_dep],
   install : false
@@ -39,7 +39,7 @@ test('json_diff_test', test_exe)
 
 # Profile test executable
 profile_exe = executable('test_profile',
-  'tests/test_profile.c',
+  'test_profile.c',
   link_with : json_diff_lib,
   dependencies : [cjson_dep, math_dep],
   install : false
@@ -54,7 +54,7 @@ run_target('profile',
 cc = meson.get_compiler('c')
 if cc.has_argument('-fsanitize=fuzzer')
   fuzz_exe = executable('fuzz_json_diff',
-    'tests/fuzz_json_diff.c',
+    'fuzz_json_diff.c',
     link_with : json_diff_lib,
     dependencies : [cjson_dep, math_dep],
     c_args : ['-fsanitize=fuzzer', '-g'],
@@ -77,6 +77,57 @@ if cc.has_argument('-fsanitize=fuzzer')
     command : ['sh', '-c', 'mkdir -p corpus && echo \'{"test": 1}\' > corpus/simple1.json && echo \'{"test": 2}\' > corpus/simple2.json && echo \'{"arr": [1,2,3]}\' > corpus/array1.json && echo \'{"arr": [2,3,4]}\' > corpus/array2.json && ' + fuzz_exe.full_path() + ' corpus/']
   )
 endif
+
+# Clang-tidy support
+clang_tidy = find_program('clang-tidy', required : false)
+if clang_tidy.found()
+  # Add clang-tidy target
+  run_target('clang-tidy',
+    command : [
+      clang_tidy,
+      '-p', meson.current_build_dir(),
+      '--config-file=' + join_paths(meson.current_source_dir(), '.clang-tidy'),
+      'src/json_diff.c',
+      'test_json_diff.c',
+      'test_profile.c',
+      'fuzz_json_diff.c'
+    ],
+    depends : [json_diff_lib, test_exe, profile_exe]
+  )
+  
+  # Add clang-tidy fix target
+  run_target('clang-tidy-fix',
+    command : [
+      clang_tidy,
+      '-p', meson.current_build_dir(),
+      '--config-file=' + join_paths(meson.current_source_dir(), '.clang-tidy'),
+      '--fix',
+      'src/json_diff.c',
+      'test_json_diff.c',
+      'test_profile.c',
+      'fuzz_json_diff.c'
+    ],
+    depends : [json_diff_lib, test_exe, profile_exe]
+  )
+endif
+
+# Static analysis target
+run_target('analyze',
+  command : [
+    'sh', '-c',
+    'if command -v clang-tidy >/dev/null 2>&1; then ' +
+    'echo "Running clang-tidy..."; ' +
+    'meson compile -C ' + meson.current_build_dir() + ' clang-tidy; ' +
+    'fi; ' +
+    'if command -v cppcheck >/dev/null 2>&1; then ' +
+    'echo "Running cppcheck..."; ' +
+    'cppcheck --enable=all --std=c11 --platform=unix64 ' +
+    '--suppress=missingIncludeSystem --suppress=unusedFunction ' +
+    '--suppress=unmatchedSuppression --inline-suppr ' +
+    'src/ .; ' +
+    'fi'
+  ]
+)
 
 # Declare dependency for other projects
 json_diff_dep = declare_dependency(
