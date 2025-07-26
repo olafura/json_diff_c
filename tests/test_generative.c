@@ -123,7 +123,19 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 
 	/* Sometimes return the original unchanged */
 	if (rand_double() > mutation_rate) {
-		return cJSON_Duplicate(original, 1);
+		if (cJSON_IsObject(original)) {
+			return cJSON_CreateObjectReference(original);
+		} else if (cJSON_IsArray(original)) {
+			return cJSON_CreateArrayReference(original);
+		} else if (cJSON_IsString(original)) {
+			return cJSON_CreateString(original->valuestring);
+		} else if (cJSON_IsNumber(original)) {
+			return cJSON_CreateNumber(original->valuedouble);
+		} else if (cJSON_IsBool(original)) {
+			return cJSON_CreateBool(cJSON_IsTrue(original));
+		} else {
+			return cJSON_CreateNull();
+		}
 	}
 
 	switch (original->type) {
@@ -256,7 +268,19 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 	}
 	}
 
-	return cJSON_Duplicate(original, 1);
+	if (cJSON_IsObject(original)) {
+		return cJSON_CreateObjectReference(original);
+	} else if (cJSON_IsArray(original)) {
+		return cJSON_CreateArrayReference(original);
+	} else if (cJSON_IsString(original)) {
+		return cJSON_CreateString(original->valuestring);
+	} else if (cJSON_IsNumber(original)) {
+		return cJSON_CreateNumber(original->valuedouble);
+	} else if (cJSON_IsBool(original)) {
+		return cJSON_CreateBool(cJSON_IsTrue(original));
+	} else {
+		return cJSON_CreateNull();
+	}
 }
 
 /* Test property: diff(A, B) should create a valid diff */

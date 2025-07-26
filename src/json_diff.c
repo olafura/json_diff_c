@@ -528,7 +528,20 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 	for (i = 0; i < orig_size; i++) {
 		cJSON *orig_item = cJSON_GetArrayItem(original, i);
 		if (orig_item) {
-			cJSON *copy = cJSON_Duplicate(orig_item, 1);
+			cJSON *copy;
+			if (cJSON_IsObject(orig_item)) {
+				copy = cJSON_CreateObjectReference(orig_item);
+			} else if (cJSON_IsArray(orig_item)) {
+				copy = cJSON_CreateArrayReference(orig_item);
+			} else if (cJSON_IsString(orig_item)) {
+				copy = cJSON_CreateString(orig_item->valuestring);
+			} else if (cJSON_IsNumber(orig_item)) {
+				copy = cJSON_CreateNumber(orig_item->valuedouble);
+			} else if (cJSON_IsBool(orig_item)) {
+				copy = cJSON_CreateBool(cJSON_IsTrue(orig_item));
+			} else {
+				copy = cJSON_CreateNull();
+			}
 			if (copy)
 				cJSON_AddItemToArray(working_array, copy);
 		}
@@ -609,8 +622,21 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 			int array_size = cJSON_GetArraySize(diff_item);
 			if (array_size == 1) {
 				/* Addition */
-				cJSON *new_val = cJSON_Duplicate(
-				    cJSON_GetArrayItem(diff_item, 0), 1);
+				cJSON *src_val = cJSON_GetArrayItem(diff_item, 0);
+				cJSON *new_val;
+				if (cJSON_IsObject(src_val)) {
+					new_val = cJSON_CreateObjectReference(src_val);
+				} else if (cJSON_IsArray(src_val)) {
+					new_val = cJSON_CreateArrayReference(src_val);
+				} else if (cJSON_IsString(src_val)) {
+					new_val = cJSON_CreateString(src_val->valuestring);
+				} else if (cJSON_IsNumber(src_val)) {
+					new_val = cJSON_CreateNumber(src_val->valuedouble);
+				} else if (cJSON_IsBool(src_val)) {
+					new_val = cJSON_CreateBool(cJSON_IsTrue(src_val));
+				} else {
+					new_val = cJSON_CreateNull();
+				}
 				if (new_val) {
 					int current_size =
 					    cJSON_GetArraySize(working_array);
@@ -627,8 +653,21 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 				}
 			} else if (array_size == 2) {
 				/* Replacement */
-				cJSON *new_val = cJSON_Duplicate(
-				    cJSON_GetArrayItem(diff_item, 1), 1);
+				cJSON *src_val = cJSON_GetArrayItem(diff_item, 1);
+				cJSON *new_val;
+				if (cJSON_IsObject(src_val)) {
+					new_val = cJSON_CreateObjectReference(src_val);
+				} else if (cJSON_IsArray(src_val)) {
+					new_val = cJSON_CreateArrayReference(src_val);
+				} else if (cJSON_IsString(src_val)) {
+					new_val = cJSON_CreateString(src_val->valuestring);
+				} else if (cJSON_IsNumber(src_val)) {
+					new_val = cJSON_CreateNumber(src_val->valuedouble);
+				} else if (cJSON_IsBool(src_val)) {
+					new_val = cJSON_CreateBool(cJSON_IsTrue(src_val));
+				} else {
+					new_val = cJSON_CreateNull();
+				}
 				if (new_val && index >= 0 &&
 				    index < cJSON_GetArraySize(working_array)) {
 					cJSON_ReplaceItemInArray(
@@ -662,7 +701,20 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 	for (i = 0; i < final_size; i++) {
 		cJSON *item = cJSON_GetArrayItem(working_array, i);
 		if (item) {
-			cJSON *copy = cJSON_Duplicate(item, 1);
+			cJSON *copy;
+			if (cJSON_IsObject(item)) {
+				copy = cJSON_CreateObjectReference(item);
+			} else if (cJSON_IsArray(item)) {
+				copy = cJSON_CreateArrayReference(item);
+			} else if (cJSON_IsString(item)) {
+				copy = cJSON_CreateString(item->valuestring);
+			} else if (cJSON_IsNumber(item)) {
+				copy = cJSON_CreateNumber(item->valuedouble);
+			} else if (cJSON_IsBool(item)) {
+				copy = cJSON_CreateBool(cJSON_IsTrue(item));
+			} else {
+				copy = cJSON_CreateNull();
+			}
 			if (copy)
 				cJSON_AddItemToArray(result, copy);
 		}
