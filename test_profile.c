@@ -33,8 +33,8 @@ static char *read_file(const char *filename)
 		return NULL;
 	}
 
-	fread(content, 1, length, file);
-	content[length] = '\0';
+	size_t bytes_read = fread(content, 1, length, file);
+	content[bytes_read] = '\0';
 	fclose(file);
 
 	return content;
