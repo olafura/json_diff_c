@@ -59,15 +59,39 @@ static void test_basic_diff(void)
 
 	/* Verify diff contains test: [1, 2] */
 	cJSON *test_diff = cJSON_GetObjectItem(diff, "test");
-	assert(test_diff != NULL);
-	assert(cJSON_IsArray(test_diff));
-	assert(cJSON_GetArraySize(test_diff) == 2);
+	if (!test_diff) {
+		printf("ERROR: No 'test' field in diff\n");
+		char *diff_str = cJSON_Print(diff);
+		printf("Diff: %s\n", diff_str ? diff_str : "NULL");
+		free(diff_str);
+		assert(false);
+	}
+	if (!cJSON_IsArray(test_diff)) {
+		printf("ERROR: 'test' field is not an array\n");
+		assert(false);
+	}
+	if (cJSON_GetArraySize(test_diff) != 2) {
+		printf("ERROR: 'test' array size is %d, expected 2\n", cJSON_GetArraySize(test_diff));
+		assert(false);
+	}
 	cJSON *old_val = cJSON_GetArrayItem(test_diff, 0);
 	cJSON *new_val = cJSON_GetArrayItem(test_diff, 1);
-	assert(old_val != NULL && cJSON_IsNumber(old_val));
-	assert(new_val != NULL && cJSON_IsNumber(new_val));
-	assert(fabs(old_val->valuedouble - 1.0) < 1e-9);
-	assert(fabs(new_val->valuedouble - 2.0) < 1e-9);
+	if (!old_val || !cJSON_IsNumber(old_val)) {
+		printf("ERROR: old_val is not a number\n");
+		assert(false);
+	}
+	if (!new_val || !cJSON_IsNumber(new_val)) {
+		printf("ERROR: new_val is not a number\n");
+		assert(false);
+	}
+	if (fabs(old_val->valuedouble - 1.0) >= 1e-9) {
+		printf("ERROR: old_val is %f, expected 1.0\n", old_val->valuedouble);
+		assert(false);
+	}
+	if (fabs(new_val->valuedouble - 2.0) >= 1e-9) {
+		printf("ERROR: new_val is %f, expected 2.0\n", new_val->valuedouble);
+		assert(false);
+	}
 
 	cJSON_Delete(diff);
 	cJSON_Delete(obj1);
