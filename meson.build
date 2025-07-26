@@ -28,7 +28,7 @@ install_headers('src/json_diff.h')
 
 # Test executable
 test_exe = executable('test_json_diff',
-  'test_json_diff.c',
+  'tests/test_json_diff.c',
   link_with : json_diff_lib,
   dependencies : [cjson_dep, math_dep],
   install : false
@@ -39,7 +39,7 @@ test('json_diff_test', test_exe)
 
 # Profile test executable
 profile_exe = executable('test_profile',
-  'test_profile.c',
+  'tests/test_profile.c',
   link_with : json_diff_lib,
   dependencies : [cjson_dep, math_dep],
   install : false
@@ -88,8 +88,8 @@ if clang_tidy.found()
       '-p', meson.current_build_dir(),
       '--config-file=' + join_paths(meson.current_source_dir(), '.clang-tidy'),
       'src/json_diff.c',
-      'test_json_diff.c',
-      'test_profile.c',
+      'tests/test_json_diff.c',
+      'tests/test_profile.c',
       'fuzz_json_diff.c'
     ],
     depends : [json_diff_lib, test_exe, profile_exe]
@@ -103,8 +103,8 @@ if clang_tidy.found()
       '--config-file=' + join_paths(meson.current_source_dir(), '.clang-tidy'),
       '--fix',
       'src/json_diff.c',
-      'test_json_diff.c',
-      'test_profile.c',
+      'tests/test_json_diff.c',
+      'tests/test_profile.c',
       'fuzz_json_diff.c'
     ],
     depends : [json_diff_lib, test_exe, profile_exe]
