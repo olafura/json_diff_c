@@ -29,7 +29,7 @@ bench-parse: build
 	$(BUILD_DIR)/bench_parse
 
 profile: build
-	meson run profile -C $(BUILD_DIR)
+	meson compile -C $(BUILD_DIR) profile
 
 install: build
 	meson install -C $(BUILD_DIR)

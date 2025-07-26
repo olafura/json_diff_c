@@ -35,7 +35,7 @@ test_exe = executable('test_json_diff',
 )
 
 # Register test
-test('json_diff_test', test_exe)
+test('json_diff_test', test_exe, workdir : meson.current_source_dir())
 
 # Profile test executable
 profile_exe = executable('test_profile',

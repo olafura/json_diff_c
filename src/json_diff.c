@@ -159,7 +159,7 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 	} else if (cJSON_IsArray(old_val)) {
 		old_item = cJSON_CreateArrayReference(old_val);
 	} else if (cJSON_IsString(old_val)) {
-		old_item = cJSON_CreateStringReference(old_val->valuestring);
+		old_item = cJSON_CreateString(old_val->valuestring);
 	} else if (cJSON_IsNumber(old_val)) {
 		old_item = cJSON_CreateNumber(old_val->valuedouble);
 	} else if (cJSON_IsBool(old_val)) {
@@ -173,7 +173,7 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 	} else if (cJSON_IsArray(new_val)) {
 		new_item = cJSON_CreateArrayReference(new_val);
 	} else if (cJSON_IsString(new_val)) {
-		new_item = cJSON_CreateStringReference(new_val->valuestring);
+		new_item = cJSON_CreateString(new_val->valuestring);
 	} else if (cJSON_IsNumber(new_val)) {
 		new_item = cJSON_CreateNumber(new_val->valuedouble);
 	} else if (cJSON_IsBool(new_val)) {
@@ -211,7 +211,7 @@ cJSON *create_addition_array(const cJSON *new_val)
 	} else if (cJSON_IsArray(new_val)) {
 		new_item = cJSON_CreateArrayReference(new_val);
 	} else if (cJSON_IsString(new_val)) {
-		new_item = cJSON_CreateStringReference(new_val->valuestring);
+		new_item = cJSON_CreateString(new_val->valuestring);
 	} else if (cJSON_IsNumber(new_val)) {
 		new_item = cJSON_CreateNumber(new_val->valuedouble);
 	} else if (cJSON_IsBool(new_val)) {
@@ -246,7 +246,7 @@ cJSON *create_deletion_array(const cJSON *old_val)
 	} else if (cJSON_IsArray(old_val)) {
 		old_item = cJSON_CreateArrayReference(old_val);
 	} else if (cJSON_IsString(old_val)) {
-		old_item = cJSON_CreateStringReference(old_val->valuestring);
+		old_item = cJSON_CreateString(old_val->valuestring);
 	} else if (cJSON_IsNumber(old_val)) {
 		old_item = cJSON_CreateNumber(old_val->valuedouble);
 	} else if (cJSON_IsBool(old_val)) {
@@ -331,15 +331,29 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 					has_changes = true;
 				}
 			} else {
-				/* Simple replacement */
-				cJSON *change_array =
-				    create_change_array(left_item, right_item);
-				if (change_array) {
+				/* Simple replacement - create addition and
+				 * deletion */
+				cJSON *add_array =
+				    create_addition_array(right_item);
+				cJSON *del_array =
+				    create_deletion_array(left_item);
+				if (add_array && del_array) {
+					/* Addition at index */
 					snprintf(index_str, sizeof(index_str),
 					         "%d", i);
 					cJSON_AddItemToObject(
-					    diff_obj, index_str, change_array);
+					    diff_obj, index_str, add_array);
+					/* Deletion at index */
+					snprintf(index_str, sizeof(index_str),
+					         "_%d", i);
+					cJSON_AddItemToObject(
+					    diff_obj, index_str, del_array);
 					has_changes = true;
+				} else {
+					if (add_array)
+						cJSON_Delete(add_array);
+					if (del_array)
+						cJSON_Delete(del_array);
 				}
 			}
 		}
@@ -769,4 +783,28 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 	}
 
 	return result;
+}
+
+cJSON *json_diff_str(const char *left, const char *right,
+                     const struct json_diff_options *opts)
+{
+	if (!left || !right)
+		return NULL;
+
+	cJSON *left_json = cJSON_Parse(left);
+	if (!left_json)
+		return NULL;
+
+	cJSON *right_json = cJSON_Parse(right);
+	if (!right_json) {
+		cJSON_Delete(left_json);
+		return NULL;
+	}
+
+	cJSON *diff = json_diff(left_json, right_json, opts);
+
+	cJSON_Delete(left_json);
+	cJSON_Delete(right_json);
+
+	return diff;
 }
