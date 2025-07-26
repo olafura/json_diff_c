@@ -189,7 +189,13 @@ echo '{"arr": [1,2,3]}' > corpus/array1.json
 echo '{"arr": [2,3,4]}' > corpus/array2.json
 
 # Run fuzzer for 60 seconds
-meson compile fuzz -C builddir-fuzz
+meson compile -C builddir-fuzz fuzz
+
+# Run fuzzer for 5 minutes (longer session)
+meson compile -C builddir-fuzz fuzz-long
+
+# Run fuzzer with custom arguments (runs indefinitely until stopped)
+meson compile -C builddir-fuzz fuzz-custom
 ```
 
 The fuzzer will automatically generate test cases and report any crashes or hangs.

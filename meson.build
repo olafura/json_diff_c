@@ -53,6 +53,16 @@ if cc.has_argument('-fsanitize=fuzzer')
   run_target('fuzz',
     command : [fuzz_exe, '-max_total_time=60', 'corpus/']
   )
+  
+  # Add a longer fuzzing session target
+  run_target('fuzz-long',
+    command : [fuzz_exe, '-max_total_time=300', 'corpus/']
+  )
+  
+  # Add a target to run fuzzer with custom arguments
+  run_target('fuzz-custom',
+    command : [fuzz_exe, 'corpus/']
+  )
 endif
 
 # Declare dependency for other projects
