@@ -70,8 +70,9 @@ int main(void) {
     double t1 = get_time_ms();
 
     double total = t1 - t0;
-    printf("Medium diff benchmark: total = %.2f ms, avg = %.2f ms/iter\n",
-           total, total / iterations);
+    // Display total time in ms and average per iteration in microseconds
+    printf("Medium diff benchmark: total = %.3f ms, avg = %.3f us/iter\n",
+           total, (total * 1000.0) / iterations);
 
     cJSON_Delete(left);
     cJSON_Delete(right);
