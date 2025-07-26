@@ -713,8 +713,9 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 	if (!original || !diff)
 		return NULL;
 
+	/* Handle simple value replacement (type changes) */
 	if (cJSON_IsArray(diff) && cJSON_GetArraySize(diff) == 2) {
-		/* Simple value replacement */
+		/* This is a change array [old_value, new_value] */
 		return cJSON_Duplicate(cJSON_GetArrayItem(diff, 1), 1);
 	}
 
@@ -730,8 +731,18 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 		}
 	}
 
-	if (!cJSON_IsObject(original))
+	/* For non-object originals, we can't apply object-style patches */
+	if (!cJSON_IsObject(original)) {
+		/* If diff is an object but original isn't, this might be a type change */
+		/* Check if the diff contains a single change array */
+		if (cJSON_GetArraySize(diff) == 1) {
+			cJSON *first_item = diff->child;
+			if (first_item && cJSON_IsArray(first_item) && cJSON_GetArraySize(first_item) == 2) {
+				return cJSON_Duplicate(cJSON_GetArrayItem(first_item, 1), 1);
+			}
+		}
 		return cJSON_Duplicate(original, 1);
+	}
 
 	result = cJSON_Duplicate(original, 1);
 	if (!result)
