@@ -204,7 +204,7 @@ int json_object_set(struct json_object *object, const char *key,
 	/* Check if key already exists */
 	for (i = 0; i < object->count; i++) {
 		if (strcmp(object->pairs[i].key, key) == 0) {
-			json_value_free(&object->pairs[i].value);
+			json_value_free_contents(&object->pairs[i].value);
 			struct json_value *cloned_value = json_value_clone(value);
 			if (!cloned_value)
 				return -1;
