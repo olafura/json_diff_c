@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
-#include "json_diff.h"
+#include "src/json_diff.h"
 
 static double get_time_ms(void) {
     struct timeval tv;

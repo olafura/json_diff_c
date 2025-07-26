@@ -203,11 +203,16 @@ make bench
 To measure raw JSON parsing cost for the medium dataset:
 ```bash
 # via Makefile
-make bench-parse
-n# via Meson
-meson compile -C builddir bench_parse && ninja -C builddir bench-parse
+make bench-parse     # cJSON_Parse parsing
+make bench-jsmn      # jsmn_parse parsing
 ```
-This performs 5 warm‑up iterations then 50 timed calls to json_diff, printing the total and per‑iteration latency.
+
+This performs 5 warm‑up iterations then 50 timed parses, printing the total and per‑iteration latency.
+
+# For Meson builds, compile the parser benchmarks:
+```bash
+meson compile -C builddir bench_parse bench_jsmn
+```
 
 The profile tests measure:
 - Medium-sized JSON diff performance (50 iterations)

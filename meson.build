@@ -67,9 +67,15 @@ bench_parse_exe = executable('bench_parse',
   dependencies : [cjson_dep],
   install : false
 )
-run_target('bench-parse',
-  command : [bench_parse_exe]
+## bench-parse run_target removed due to Meson introspect bug; run manually
+
+# JSMN parse benchmark (vs. cJSON)
+bench_jsmn_exe = executable('bench_jsmn',
+  'tests/bench_jsmn.c', 'tests/jsmn.c',
+  install : false
 )
+## bench-jsmn run_target removed; run manually
+
 
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')

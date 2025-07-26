@@ -63,6 +63,13 @@ bench-parse: tests/bench_parse.o $(OBJECTS)
 	$(CC) -o bench_parse tests/bench_parse.o $(OBJECTS) $(LDFLAGS)
 	./bench_parse
 
+tests/jsmn.o: tests/jsmn.c tests/jsmn.h
+	$(CC) $(CFLAGS) -c $< -o tests/jsmn.o
+
+bench-jsmn: tests/bench_jsmn.o tests/jsmn.o $(OBJECTS)
+	$(CC) -o bench_jsmn tests/bench_jsmn.o tests/jsmn.o $(OBJECTS) $(LDFLAGS)
+	./bench_jsmn
+
 clean:
 	rm -f $(OBJECTS) $(TEST_OBJECTS) $(TARGET) $(TEST_TARGET)
 	rm -rf builddir
