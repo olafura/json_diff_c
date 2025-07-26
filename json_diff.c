@@ -3,319 +3,63 @@
 #include <math.h>
 #include "json_diff.h"
 
-#define INITIAL_CAPACITY 8
 #define ARRAY_MARKER "_t"
 #define ARRAY_MARKER_VALUE "a"
 
-/* Forward declaration */
-static void json_value_free_contents(struct json_value *value);
-
 /**
- * json_value_create_null - Create a null JSON value
- *
- * Return: pointer to new JSON value or NULL on failure
- */
-struct json_value *json_value_create_null(void)
-{
-	struct json_value *value = malloc(sizeof(*value));
-
-	if (!value)
-		return NULL;
-
-	value->type = JSON_NULL;
-	return value;
-}
-
-/**
- * json_value_create_bool - Create a boolean JSON value
- * @val: boolean value
- *
- * Return: pointer to new JSON value or NULL on failure
- */
-struct json_value *json_value_create_bool(bool val)
-{
-	struct json_value *value = malloc(sizeof(*value));
-
-	if (!value)
-		return NULL;
-
-	value->type = JSON_BOOL;
-	value->data.bool_val = val;
-	return value;
-}
-
-/**
- * json_value_create_number - Create a numeric JSON value
- * @val: numeric value
- *
- * Return: pointer to new JSON value or NULL on failure
- */
-struct json_value *json_value_create_number(double val)
-{
-	struct json_value *value = malloc(sizeof(*value));
-
-	if (!value)
-		return NULL;
-
-	value->type = JSON_NUMBER;
-	value->data.number_val = val;
-	return value;
-}
-
-/**
- * json_value_create_string - Create a string JSON value
- * @val: string value
- *
- * Return: pointer to new JSON value or NULL on failure
- */
-struct json_value *json_value_create_string(const char *val)
-{
-	struct json_value *value = malloc(sizeof(*value));
-	char *str_copy;
-
-	if (!value)
-		return NULL;
-
-	str_copy = strdup(val);
-	if (!str_copy) {
-		free(value);
-		return NULL;
-	}
-
-	value->type = JSON_STRING;
-	value->data.string_val = str_copy;
-	return value;
-}
-
-/**
- * json_value_create_array - Create an array JSON value
- *
- * Return: pointer to new JSON value or NULL on failure
- */
-struct json_value *json_value_create_array(void)
-{
-	struct json_value *value = malloc(sizeof(*value));
-	struct json_array *array;
-
-	if (!value)
-		return NULL;
-
-	array = malloc(sizeof(*array));
-	if (!array) {
-		free(value);
-		return NULL;
-	}
-
-	array->values = malloc(INITIAL_CAPACITY * sizeof(struct json_value));
-	if (!array->values) {
-		free(array);
-		free(value);
-		return NULL;
-	}
-
-	array->count = 0;
-	array->capacity = INITIAL_CAPACITY;
-
-	value->type = JSON_ARRAY;
-	value->data.array_val = array;
-	return value;
-}
-
-/**
- * json_value_create_object - Create an object JSON value
- *
- * Return: pointer to new JSON value or NULL on failure
- */
-struct json_value *json_value_create_object(void)
-{
-	struct json_value *value = malloc(sizeof(*value));
-	struct json_object *object;
-
-	if (!value)
-		return NULL;
-
-	object = malloc(sizeof(*object));
-	if (!object) {
-		free(value);
-		return NULL;
-	}
-
-	object->pairs = malloc(INITIAL_CAPACITY * sizeof(struct json_object_pair));
-	if (!object->pairs) {
-		free(object);
-		free(value);
-		return NULL;
-	}
-
-	object->count = 0;
-	object->capacity = INITIAL_CAPACITY;
-
-	value->type = JSON_OBJECT;
-	value->data.object_val = object;
-	return value;
-}
-
-/**
- * json_array_append - Append a value to a JSON array
- * @array: target array
- * @value: value to append
- *
- * Return: 0 on success, negative on failure
- */
-int json_array_append(struct json_array *array, const struct json_value *value)
-{
-	struct json_value *new_values;
-	size_t new_capacity;
-
-	if (array->count >= array->capacity) {
-		new_capacity = array->capacity * 2;
-		new_values = realloc(array->values,
-				     new_capacity * sizeof(struct json_value));
-		if (!new_values)
-			return -1;
-
-		array->values = new_values;
-		array->capacity = new_capacity;
-	}
-
-	struct json_value *cloned_value = json_value_clone(value);
-	if (!cloned_value)
-		return -1;
-	
-	array->values[array->count] = *cloned_value;
-	free(cloned_value); /* Free the wrapper, keep the contents */
-	array->count++;
-	return 0;
-}
-
-/**
- * json_object_set - Set a key-value pair in a JSON object
- * @object: target object
- * @key: object key
- * @value: object value
- *
- * Return: 0 on success, negative on failure
- */
-int json_object_set(struct json_object *object, const char *key,
-		    const struct json_value *value)
-{
-	struct json_object_pair *new_pairs;
-	size_t new_capacity;
-	char *key_copy;
-	size_t i;
-
-	/* Check if key already exists */
-	for (i = 0; i < object->count; i++) {
-		if (strcmp(object->pairs[i].key, key) == 0) {
-			json_value_free_contents(&object->pairs[i].value);
-			struct json_value *cloned_value = json_value_clone(value);
-			if (!cloned_value)
-				return -1;
-			object->pairs[i].value = *cloned_value;
-			free(cloned_value); /* Free the wrapper, keep the contents */
-			return 0;
-		}
-	}
-
-	/* Add new key-value pair */
-	if (object->count >= object->capacity) {
-		new_capacity = object->capacity * 2;
-		new_pairs = realloc(object->pairs,
-				    new_capacity * sizeof(struct json_object_pair));
-		if (!new_pairs)
-			return -1;
-
-		object->pairs = new_pairs;
-		object->capacity = new_capacity;
-	}
-
-	key_copy = strdup(key);
-	if (!key_copy)
-		return -1;
-
-	struct json_value *cloned_value = json_value_clone(value);
-	if (!cloned_value) {
-		free(key_copy);
-		return -1;
-	}
-	
-	object->pairs[object->count].key = key_copy;
-	object->pairs[object->count].value = *cloned_value;
-	free(cloned_value); /* Free the wrapper, keep the contents */
-	object->count++;
-	return 0;
-}
-
-/**
- * json_object_get - Get a value from a JSON object by key
- * @object: source object
- * @key: object key
- *
- * Return: pointer to value or NULL if not found
- */
-struct json_value *json_object_get(const struct json_object *object,
-				   const char *key)
-{
-	size_t i;
-
-	for (i = 0; i < object->count; i++) {
-		if (strcmp(object->pairs[i].key, key) == 0)
-			return &object->pairs[i].value;
-	}
-
-	return NULL;
-}
-
-/**
- * json_value_equal - Compare two JSON values for equality
+ * json_value_equal - Compare two cJSON values for equality
  * @left: first value
  * @right: second value
  * @strict: use strict equality for numbers
  *
  * Return: true if equal, false otherwise
  */
-bool json_value_equal(const struct json_value *left,
-		      const struct json_value *right,
-		      bool strict)
+bool json_value_equal(const cJSON *left, const cJSON *right, bool strict)
 {
-	size_t i;
+	int i;
+
+	if (!left && !right)
+		return true;
+	if (!left || !right)
+		return false;
 
 	if (left->type != right->type)
 		return false;
 
 	switch (left->type) {
-	case JSON_NULL:
+	case cJSON_NULL:
 		return true;
-	case JSON_BOOL:
-		return left->data.bool_val == right->data.bool_val;
-	case JSON_NUMBER:
+	case cJSON_False:
+	case cJSON_True:
+		return left->type == right->type;
+	case cJSON_Number:
 		if (strict)
-			return left->data.number_val == right->data.number_val;
+			return left->valuedouble == right->valuedouble;
 		else
-			return fabs(left->data.number_val - right->data.number_val) < 1e-9;
-	case JSON_STRING:
-		return strcmp(left->data.string_val, right->data.string_val) == 0;
-	case JSON_ARRAY:
-		if (left->data.array_val->count != right->data.array_val->count)
+			return fabs(left->valuedouble - right->valuedouble) < 1e-9;
+	case cJSON_String:
+		return strcmp(left->valuestring, right->valuestring) == 0;
+	case cJSON_Array:
+		if (cJSON_GetArraySize(left) != cJSON_GetArraySize(right))
 			return false;
-		for (i = 0; i < left->data.array_val->count; i++) {
-			if (!json_value_equal(&left->data.array_val->values[i],
-					      &right->data.array_val->values[i],
+		for (i = 0; i < cJSON_GetArraySize(left); i++) {
+			if (!json_value_equal(cJSON_GetArrayItem(left, i),
+					      cJSON_GetArrayItem(right, i),
 					      strict))
 				return false;
 		}
 		return true;
-	case JSON_OBJECT:
-		if (left->data.object_val->count != right->data.object_val->count)
+	case cJSON_Object:
+		if (cJSON_GetArraySize(left) != cJSON_GetArraySize(right))
 			return false;
-		for (i = 0; i < left->data.object_val->count; i++) {
-			struct json_value *right_val = json_object_get(
-				right->data.object_val,
-				left->data.object_val->pairs[i].key);
-			if (!right_val ||
-			    !json_value_equal(&left->data.object_val->pairs[i].value,
-					      right_val, strict))
+		
+		cJSON *left_item = left->child;
+		while (left_item) {
+			cJSON *right_item = cJSON_GetObjectItem(right, left_item->string);
+			if (!right_item ||
+			    !json_value_equal(left_item, right_item, strict))
 				return false;
+			left_item = left_item->next;
 		}
 		return true;
 	}
@@ -324,201 +68,156 @@ bool json_value_equal(const struct json_value *left,
 }
 
 /**
- * json_value_clone - Create a deep copy of a JSON value
- * @value: value to clone
+ * create_change_array - Create a change array [old_value, new_value]
+ * @old_val: old value
+ * @new_val: new value
  *
- * Return: pointer to cloned value or NULL on failure
+ * Return: cJSON array or NULL on failure
  */
-struct json_value *json_value_clone(const struct json_value *value)
+cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 {
-	struct json_value *clone;
-	size_t i;
-
-	if (!value)
+	cJSON *array = cJSON_CreateArray();
+	if (!array)
 		return NULL;
 
-	switch (value->type) {
-	case JSON_NULL:
-		return json_value_create_null();
-	case JSON_BOOL:
-		return json_value_create_bool(value->data.bool_val);
-	case JSON_NUMBER:
-		return json_value_create_number(value->data.number_val);
-	case JSON_STRING:
-		return json_value_create_string(value->data.string_val);
-	case JSON_ARRAY:
-		clone = json_value_create_array();
-		if (!clone)
-			return NULL;
-		for (i = 0; i < value->data.array_val->count; i++) {
-			if (json_array_append(clone->data.array_val,
-					      &value->data.array_val->values[i]) < 0) {
-				json_value_free(clone);
-				return NULL;
-			}
-		}
-		return clone;
-	case JSON_OBJECT:
-		clone = json_value_create_object();
-		if (!clone)
-			return NULL;
-		for (i = 0; i < value->data.object_val->count; i++) {
-			if (json_object_set(clone->data.object_val,
-					    value->data.object_val->pairs[i].key,
-					    &value->data.object_val->pairs[i].value) < 0) {
-				json_value_free(clone);
-				return NULL;
-			}
-		}
-		return clone;
+	cJSON *old_copy = cJSON_Duplicate(old_val, 1);
+	cJSON *new_copy = cJSON_Duplicate(new_val, 1);
+	
+	if (!old_copy || !new_copy) {
+		cJSON_Delete(array);
+		cJSON_Delete(old_copy);
+		cJSON_Delete(new_copy);
+		return NULL;
 	}
 
-	return NULL;
+	cJSON_AddItemToArray(array, old_copy);
+	cJSON_AddItemToArray(array, new_copy);
+	return array;
 }
 
 /**
- * json_value_free_contents - Free contents of a JSON value (not the value itself)
- * @value: value whose contents to free
+ * create_addition_array - Create an addition array [new_value]
+ * @new_val: new value
+ *
+ * Return: cJSON array or NULL on failure
  */
-static void json_value_free_contents(struct json_value *value)
+cJSON *create_addition_array(const cJSON *new_val)
 {
-	size_t i;
+	cJSON *array = cJSON_CreateArray();
+	if (!array)
+		return NULL;
 
-	if (!value)
-		return;
-
-	switch (value->type) {
-	case JSON_STRING:
-		free(value->data.string_val);
-		value->data.string_val = NULL;
-		break;
-	case JSON_ARRAY:
-		if (value->data.array_val) {
-			for (i = 0; i < value->data.array_val->count; i++)
-				json_value_free_contents(&value->data.array_val->values[i]);
-			free(value->data.array_val->values);
-			free(value->data.array_val);
-			value->data.array_val = NULL;
-		}
-		break;
-	case JSON_OBJECT:
-		if (value->data.object_val) {
-			for (i = 0; i < value->data.object_val->count; i++) {
-				free(value->data.object_val->pairs[i].key);
-				json_value_free_contents(&value->data.object_val->pairs[i].value);
-			}
-			free(value->data.object_val->pairs);
-			free(value->data.object_val);
-			value->data.object_val = NULL;
-		}
-		break;
-	default:
-		break;
+	cJSON *new_copy = cJSON_Duplicate(new_val, 1);
+	if (!new_copy) {
+		cJSON_Delete(array);
+		return NULL;
 	}
+
+	cJSON_AddItemToArray(array, new_copy);
+	return array;
 }
 
 /**
- * json_value_free - Free a JSON value and its contents
- * @value: value to free
+ * create_deletion_array - Create a deletion array [old_value, 0, 0]
+ * @old_val: old value
+ *
+ * Return: cJSON array or NULL on failure
  */
-void json_value_free(struct json_value *value)
+cJSON *create_deletion_array(const cJSON *old_val)
 {
-	if (!value)
-		return;
+	cJSON *array = cJSON_CreateArray();
+	if (!array)
+		return NULL;
 
-	json_value_free_contents(value);
-	free(value);
+	cJSON *old_copy = cJSON_Duplicate(old_val, 1);
+	cJSON *zero1 = cJSON_CreateNumber(0);
+	cJSON *zero2 = cJSON_CreateNumber(0);
+	
+	if (!old_copy || !zero1 || !zero2) {
+		cJSON_Delete(array);
+		cJSON_Delete(old_copy);
+		cJSON_Delete(zero1);
+		cJSON_Delete(zero2);
+		return NULL;
+	}
+
+	cJSON_AddItemToArray(array, old_copy);
+	cJSON_AddItemToArray(array, zero1);
+	cJSON_AddItemToArray(array, zero2);
+	return array;
 }
 
 /**
- * diff_arrays - Create diff for two JSON arrays
+ * diff_arrays - Create diff for two cJSON arrays
  * @left: first array
  * @right: second array
  * @opts: diff options
  *
  * Return: diff object or NULL if arrays are equal
  */
-static struct json_value *diff_arrays(const struct json_array *left,
-				       const struct json_array *right,
-				       const struct json_diff_options *opts)
+static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
+			  const struct json_diff_options *opts)
 {
-	struct json_value *diff_obj = json_value_create_object();
-	struct json_value *marker_val = json_value_create_string(ARRAY_MARKER_VALUE);
+	cJSON *diff_obj = cJSON_CreateObject();
 	char index_str[32];
-	size_t i;
+	int left_size = cJSON_GetArraySize(left);
+	int right_size = cJSON_GetArraySize(right);
+	int max_size = (left_size > right_size) ? left_size : right_size;
 	bool has_changes = false;
+	int i;
 
-	if (!diff_obj || !marker_val) {
-		json_value_free(diff_obj);
-		json_value_free(marker_val);
+	if (!diff_obj)
 		return NULL;
-	}
 
 	/* Simple implementation: mark all changes */
-	for (i = 0; i < left->count || i < right->count; i++) {
-		if (i < left->count && i < right->count) {
-			if (!json_value_equal(&left->values[i], &right->values[i],
-					      opts->strict_equality)) {
-				struct json_value *change_array = json_value_create_array();
-				snprintf(index_str, sizeof(index_str), "%zu", i);
-				
-				json_array_append(change_array->data.array_val, &left->values[i]);
-				json_array_append(change_array->data.array_val, &right->values[i]);
-				json_object_set(diff_obj->data.object_val, index_str, change_array);
-				json_value_free(change_array);
+	for (i = 0; i < max_size; i++) {
+		cJSON *left_item = (i < left_size) ? cJSON_GetArrayItem(left, i) : NULL;
+		cJSON *right_item = (i < right_size) ? cJSON_GetArrayItem(right, i) : NULL;
+
+		if (left_item && right_item) {
+			if (!json_value_equal(left_item, right_item, opts->strict_equality)) {
+				cJSON *change_array = create_change_array(left_item, right_item);
+				snprintf(index_str, sizeof(index_str), "%d", i);
+				cJSON_AddItemToObject(diff_obj, index_str, change_array);
 				has_changes = true;
 			}
-		} else if (i < left->count) {
+		} else if (left_item) {
 			/* Deletion */
-			struct json_value *del_array = json_value_create_array();
-			struct json_value *zero = json_value_create_number(0);
-			snprintf(index_str, sizeof(index_str), "_%zu", i);
-			
-			json_array_append(del_array->data.array_val, &left->values[i]);
-			json_array_append(del_array->data.array_val, zero);
-			json_array_append(del_array->data.array_val, zero);
-			json_object_set(diff_obj->data.object_val, index_str, del_array);
-			json_value_free(del_array);
-			json_value_free(zero);
+			cJSON *del_array = create_deletion_array(left_item);
+			snprintf(index_str, sizeof(index_str), "_%d", i);
+			cJSON_AddItemToObject(diff_obj, index_str, del_array);
 			has_changes = true;
-		} else {
+		} else if (right_item) {
 			/* Insertion */
-			struct json_value *ins_array = json_value_create_array();
-			snprintf(index_str, sizeof(index_str), "%zu", i);
-			
-			json_array_append(ins_array->data.array_val, &right->values[i]);
-			json_object_set(diff_obj->data.object_val, index_str, ins_array);
-			json_value_free(ins_array);
+			cJSON *ins_array = create_addition_array(right_item);
+			snprintf(index_str, sizeof(index_str), "%d", i);
+			cJSON_AddItemToObject(diff_obj, index_str, ins_array);
 			has_changes = true;
 		}
 	}
 
 	if (has_changes) {
-		json_object_set(diff_obj->data.object_val, ARRAY_MARKER, marker_val);
-		json_value_free(marker_val);
+		cJSON_AddStringToObject(diff_obj, ARRAY_MARKER, ARRAY_MARKER_VALUE);
 		return diff_obj;
 	}
 
-	json_value_free(diff_obj);
-	json_value_free(marker_val);
+	cJSON_Delete(diff_obj);
 	return NULL;
 }
 
 /**
- * json_diff - Create a diff between two JSON values
+ * json_diff - Create a diff between two cJSON values
  * @left: first JSON value
  * @right: second JSON value
  * @opts: diff options (can be NULL for defaults)
  *
  * Return: diff object or NULL if values are equal
  */
-struct json_value *json_diff(const struct json_value *left,
-			     const struct json_value *right,
-			     const struct json_diff_options *opts)
+cJSON *json_diff(const cJSON *left, const cJSON *right,
+		 const struct json_diff_options *opts)
 {
 	struct json_diff_options default_opts = { .strict_equality = true };
-	struct json_value *diff_obj;
-	size_t i;
+	cJSON *diff_obj;
 	bool has_changes = false;
 
 	if (!opts)
@@ -527,135 +226,128 @@ struct json_value *json_diff(const struct json_value *left,
 	if (json_value_equal(left, right, opts->strict_equality))
 		return NULL;
 
-	if (left->type != right->type || 
-	    (left->type != JSON_OBJECT && left->type != JSON_ARRAY)) {
+	if (!left || !right || left->type != right->type || 
+	    (left->type != cJSON_Object && left->type != cJSON_Array)) {
 		/* Simple value change */
-		struct json_value *change_array = json_value_create_array();
-		json_array_append(change_array->data.array_val, left);
-		json_array_append(change_array->data.array_val, right);
-		return change_array;
+		return create_change_array(left, right);
 	}
 
-	if (left->type == JSON_ARRAY)
-		return diff_arrays(left->data.array_val, right->data.array_val, opts);
+	if (left->type == cJSON_Array)
+		return diff_arrays(left, right, opts);
 
 	/* Object diff */
-	diff_obj = json_value_create_object();
+	diff_obj = cJSON_CreateObject();
 	if (!diff_obj)
 		return NULL;
 
 	/* Check all keys in left object */
-	for (i = 0; i < left->data.object_val->count; i++) {
-		const char *key = left->data.object_val->pairs[i].key;
-		struct json_value *left_val = &left->data.object_val->pairs[i].value;
-		struct json_value *right_val = json_object_get(right->data.object_val, key);
+	cJSON *left_item = left->child;
+	while (left_item) {
+		const char *key = left_item->string;
+		cJSON *right_item = cJSON_GetObjectItem(right, key);
 
-		if (!right_val) {
+		if (!right_item) {
 			/* Key deleted */
-			struct json_value *del_array = json_value_create_array();
-			struct json_value *zero = json_value_create_number(0);
-			
-			json_array_append(del_array->data.array_val, left_val);
-			json_array_append(del_array->data.array_val, zero);
-			json_array_append(del_array->data.array_val, zero);
-			json_object_set(diff_obj->data.object_val, key, del_array);
-			json_value_free(del_array);
-			json_value_free(zero);
+			cJSON *del_array = create_deletion_array(left_item);
+			cJSON_AddItemToObject(diff_obj, key, del_array);
 			has_changes = true;
 		} else {
 			/* Key exists in both, check for changes */
-			struct json_value *sub_diff = json_diff(left_val, right_val, opts);
+			cJSON *sub_diff = json_diff(left_item, right_item, opts);
 			if (sub_diff) {
-				json_object_set(diff_obj->data.object_val, key, sub_diff);
-				json_value_free(sub_diff);
+				cJSON_AddItemToObject(diff_obj, key, sub_diff);
 				has_changes = true;
 			}
 		}
+		left_item = left_item->next;
 	}
 
 	/* Check for new keys in right object */
-	for (i = 0; i < right->data.object_val->count; i++) {
-		const char *key = right->data.object_val->pairs[i].key;
-		struct json_value *right_val = &right->data.object_val->pairs[i].value;
-		struct json_value *left_val = json_object_get(left->data.object_val, key);
+	cJSON *right_item = right->child;
+	while (right_item) {
+		const char *key = right_item->string;
+		cJSON *left_item = cJSON_GetObjectItem(left, key);
 
-		if (!left_val) {
+		if (!left_item) {
 			/* Key added */
-			struct json_value *add_array = json_value_create_array();
-			json_array_append(add_array->data.array_val, right_val);
-			json_object_set(diff_obj->data.object_val, key, add_array);
-			json_value_free(add_array);
+			cJSON *add_array = create_addition_array(right_item);
+			cJSON_AddItemToObject(diff_obj, key, add_array);
 			has_changes = true;
 		}
+		right_item = right_item->next;
 	}
 
 	if (has_changes)
 		return diff_obj;
 
-	json_value_free(diff_obj);
+	cJSON_Delete(diff_obj);
 	return NULL;
 }
 
 /**
- * json_patch - Apply a diff to a JSON value
+ * json_patch - Apply a diff to a cJSON value
  * @original: original JSON value
  * @diff: diff to apply
  *
  * Return: patched JSON value or NULL on failure
  */
-struct json_value *json_patch(const struct json_value *original,
-			      const struct json_value *diff)
+cJSON *json_patch(const cJSON *original, const cJSON *diff)
 {
-	struct json_value *result;
-	size_t i;
+	cJSON *result;
 
 	if (!original || !diff)
 		return NULL;
 
-	if (diff->type == JSON_ARRAY && diff->data.array_val->count == 2) {
+	if (cJSON_IsArray(diff) && cJSON_GetArraySize(diff) == 2) {
 		/* Simple value replacement */
-		return json_value_clone(&diff->data.array_val->values[1]);
+		return cJSON_Duplicate(cJSON_GetArrayItem(diff, 1), 1);
 	}
 
-	if (original->type != JSON_OBJECT || diff->type != JSON_OBJECT)
-		return json_value_clone(original);
+	if (!cJSON_IsObject(original) || !cJSON_IsObject(diff))
+		return cJSON_Duplicate(original, 1);
 
-	result = json_value_clone(original);
+	result = cJSON_Duplicate(original, 1);
 	if (!result)
 		return NULL;
 
 	/* Apply all changes from diff */
-	for (i = 0; i < diff->data.object_val->count; i++) {
-		const char *key = diff->data.object_val->pairs[i].key;
-		struct json_value *diff_val = &diff->data.object_val->pairs[i].value;
+	cJSON *diff_item = diff->child;
+	while (diff_item) {
+		const char *key = diff_item->string;
 
-		if (strcmp(key, ARRAY_MARKER) == 0)
+		if (strcmp(key, ARRAY_MARKER) == 0) {
+			diff_item = diff_item->next;
 			continue; /* Skip array marker */
+		}
 
-		if (diff_val->type == JSON_ARRAY) {
-			if (diff_val->data.array_val->count == 1) {
+		if (cJSON_IsArray(diff_item)) {
+			int array_size = cJSON_GetArraySize(diff_item);
+			if (array_size == 1) {
 				/* Addition */
-				json_object_set(result->data.object_val, key,
-					       &diff_val->data.array_val->values[0]);
-			} else if (diff_val->data.array_val->count == 3) {
+				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
+				cJSON_DeleteItemFromObject(result, key);
+				cJSON_AddItemToObject(result, key, new_val);
+			} else if (array_size == 3) {
 				/* Deletion - remove key */
-				/* This is simplified; full implementation would remove the key */
-			} else if (diff_val->data.array_val->count == 2) {
+				cJSON_DeleteItemFromObject(result, key);
+			} else if (array_size == 2) {
 				/* Replacement */
-				json_object_set(result->data.object_val, key,
-					       &diff_val->data.array_val->values[1]);
+				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
+				cJSON_DeleteItemFromObject(result, key);
+				cJSON_AddItemToObject(result, key, new_val);
 			}
 		} else {
 			/* Nested diff */
-			struct json_value *orig_val = json_object_get(result->data.object_val, key);
+			cJSON *orig_val = cJSON_GetObjectItem(result, key);
 			if (orig_val) {
-				struct json_value *patched = json_patch(orig_val, diff_val);
+				cJSON *patched = json_patch(orig_val, diff_item);
 				if (patched) {
-					json_object_set(result->data.object_val, key, patched);
-					json_value_free(patched);
+					cJSON_DeleteItemFromObject(result, key);
+					cJSON_AddItemToObject(result, key, patched);
 				}
 			}
 		}
+		diff_item = diff_item->next;
 	}
 
 	return result;

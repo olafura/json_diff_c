@@ -24,9 +24,8 @@ A C11 implementation of JSON diffing and patching functionality, following the L
  *
  * Return: diff object or NULL if values are equal
  */
-struct json_value *json_diff(const struct json_value *left,
-                             const struct json_value *right,
-                             const struct json_diff_options *opts);
+cJSON *json_diff(const cJSON *left, const cJSON *right,
+                 const struct json_diff_options *opts);
 
 /**
  * json_patch - Apply a diff to a JSON value
@@ -35,8 +34,17 @@ struct json_value *json_diff(const struct json_value *left,
  *
  * Return: patched JSON value or NULL on failure
  */
-struct json_value *json_patch(const struct json_value *original,
-                              const struct json_value *diff);
+cJSON *json_patch(const cJSON *original, const cJSON *diff);
+
+/**
+ * json_value_equal - Compare two JSON values for equality
+ * @left: first value
+ * @right: second value
+ * @strict: use strict equality for numbers
+ *
+ * Return: true if equal, false otherwise
+ */
+bool json_value_equal(const cJSON *left, const cJSON *right, bool strict);
 ```
 
 ### Example Usage
@@ -47,34 +55,47 @@ struct json_value *json_patch(const struct json_value *original,
 int main(void)
 {
     // Create first object: {"test": 1}
-    struct json_value *obj1 = json_value_create_object();
-    struct json_value *val1 = json_value_create_number(1);
-    json_object_set(obj1->data.object_val, "test", val1);
+    cJSON *obj1 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(obj1, "test", 1);
 
     // Create second object: {"test": 2}  
-    struct json_value *obj2 = json_value_create_object();
-    struct json_value *val2 = json_value_create_number(2);
-    json_object_set(obj2->data.object_val, "test", val2);
+    cJSON *obj2 = cJSON_CreateObject();
+    cJSON_AddNumberToObject(obj2, "test", 2);
 
     // Create diff
-    struct json_value *diff = json_diff(obj1, obj2, NULL);
+    cJSON *diff = json_diff(obj1, obj2, NULL);
     
     // Apply patch
-    struct json_value *patched = json_patch(obj1, diff);
+    cJSON *patched = json_patch(obj1, diff);
     
     // Verify result equals obj2
     assert(json_value_equal(patched, obj2, true));
     
     // Cleanup
-    json_value_free(obj1);
-    json_value_free(obj2);
-    json_value_free(diff);
-    json_value_free(patched);
-    json_value_free(val1);
-    json_value_free(val2);
+    cJSON_Delete(obj1);
+    cJSON_Delete(obj2);
+    cJSON_Delete(diff);
+    cJSON_Delete(patched);
     
     return 0;
 }
+```
+
+## Dependencies
+
+This library requires the cJSON library:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install libcjson-dev
+
+# CentOS/RHEL/Fedora
+sudo yum install cjson-devel
+# or
+sudo dnf install cjson-devel
+
+# macOS with Homebrew
+brew install cjson
 ```
 
 ## Building
