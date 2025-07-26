@@ -7,6 +7,9 @@
 #define ARRAY_MARKER "_t"
 #define ARRAY_MARKER_VALUE "a"
 
+/* Forward declaration */
+static void json_value_free_contents(struct json_value *value);
+
 /**
  * json_value_create_null - Create a null JSON value
  *
