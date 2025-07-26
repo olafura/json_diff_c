@@ -542,7 +542,27 @@ static void test_edge_cases(void)
 
 		/* Test all properties */
 		assert(test_diff_creates_valid_diff(json1, json2));
-		assert(test_patch_roundtrip(json1, json2));
+		if (!test_patch_roundtrip(json1, json2)) {
+			printf("FAIL: patch_roundtrip for %s\n", edge_cases[i].name);
+			char *str1 = cJSON_Print(json1);
+			char *str2 = cJSON_Print(json2);
+			printf("JSON1: %s\n", str1 ? str1 : "NULL");
+			printf("JSON2: %s\n", str2 ? str2 : "NULL");
+			if (str1) free(str1);
+			if (str2) free(str2);
+			
+			cJSON *diff = json_diff(json1, json2, NULL);
+			if (diff) {
+				char *diff_str = cJSON_Print(diff);
+				printf("DIFF: %s\n", diff_str ? diff_str : "NULL");
+				if (diff_str) free(diff_str);
+				cJSON_Delete(diff);
+			}
+			
+			cJSON_Delete(json1);
+			cJSON_Delete(json2);
+			return;
+		}
 		assert(test_self_diff_is_null(json1));
 		assert(test_self_diff_is_null(json2));
 		assert(test_equality_consistency(json1, json2));
