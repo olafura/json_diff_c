@@ -2,6 +2,7 @@
 // Property-based testing for specific issues found in json_diff
 #include "src/json_diff.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
