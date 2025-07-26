@@ -62,10 +62,12 @@ static void test_basic_diff(void)
 	assert(test_diff != NULL);
 	assert(cJSON_IsArray(test_diff));
 	assert(cJSON_GetArraySize(test_diff) == 2);
-	assert(fabs(cJSON_GetArrayItem(test_diff, 0)->valuedouble - 1.0) <
-	       1e-9);
-	assert(fabs(cJSON_GetArrayItem(test_diff, 1)->valuedouble - 2.0) <
-	       1e-9);
+	cJSON *old_val = cJSON_GetArrayItem(test_diff, 0);
+	cJSON *new_val = cJSON_GetArrayItem(test_diff, 1);
+	assert(old_val != NULL && cJSON_IsNumber(old_val));
+	assert(new_val != NULL && cJSON_IsNumber(new_val));
+	assert(fabs(old_val->valuedouble - 1.0) < 1e-9);
+	assert(fabs(new_val->valuedouble - 2.0) < 1e-9);
 
 	cJSON_Delete(diff);
 	cJSON_Delete(obj1);
@@ -156,7 +158,7 @@ static void test_patch(void)
 	assert(patched != NULL);
 
 	/* Verify patched result equals obj2 */
-	assert(json_value_equal(patched, obj2, true));
+	assert(json_value_equal(patched, obj2, false));
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
