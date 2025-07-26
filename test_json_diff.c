@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <assert.h>
 #include <math.h>
-#include "json_diff.h"
+#include "src/json_diff.h"
 
 /**
  * test_basic_diff - Test basic JSON diffing functionality

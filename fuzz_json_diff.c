@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include "json_diff.h"
+#include "src/json_diff.h"
 
 /**
  * LLVMFuzzerTestOneInput - Fuzzer entry point for json_diff

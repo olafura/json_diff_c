@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include "json_diff.h"
+#include "src/json_diff.h"
 
 /**
  * read_file - Read entire file into a string
