@@ -4,9 +4,9 @@ CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -Werror -O2 -g
 LDFLAGS = -lm -lcjson
 
-SOURCES = json_diff.c
-HEADERS = json_diff.h
-TEST_SOURCES = test_json_diff.c
+SOURCES = src/json_diff.c
+HEADERS = src/json_diff.h
+TEST_SOURCES = tests/test_json_diff.c
 OBJECTS = $(SOURCES:.c=.o)
 TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
 
@@ -43,7 +43,7 @@ $(TEST_TARGET): $(TEST_OBJECTS) $(OBJECTS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -Isrc -c $< -o $@
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
