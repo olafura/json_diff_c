@@ -148,57 +148,136 @@ cJSON *create_deletion_array(const cJSON *old_val)
 }
 
 /**
- * diff_arrays - Create diff for two cJSON arrays
+ * myers_diff_arrays - Simple Myers-like diff for arrays
  * @left: first array
  * @right: second array
  * @opts: diff options
  *
  * Return: diff object or NULL if arrays are equal
  */
-static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
-			  const struct json_diff_options *opts)
+static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
+				const struct json_diff_options *opts)
 {
 	cJSON *diff_obj = cJSON_CreateObject();
 	char index_str[32];
 	int left_size = cJSON_GetArraySize(left);
 	int right_size = cJSON_GetArraySize(right);
-	int max_size = (left_size > right_size) ? left_size : right_size;
 	bool has_changes = false;
-	int i;
+	int count = 0;
+	int deleted_count = 0;
+	int i, j;
 
 	if (!diff_obj)
 		return NULL;
 
-	/* Simple implementation: mark all changes */
-	for (i = 0; i < max_size; i++) {
-		cJSON *left_item = (i < left_size) ? cJSON_GetArrayItem(left, i) : NULL;
-		cJSON *right_item = (i < right_size) ? cJSON_GetArrayItem(right, i) : NULL;
-
-		if (left_item && right_item) {
-			if (!json_value_equal(left_item, right_item, opts->strict_equality)) {
-				cJSON *sub_diff = json_diff(left_item, right_item, opts);
-				if (sub_diff) {
-					snprintf(index_str, sizeof(index_str), "%d", i);
-					cJSON_AddItemToObject(diff_obj, index_str, sub_diff);
-					has_changes = true;
+	/* Simple LCS-based approach */
+	i = 0;
+	j = 0;
+	
+	while (i < left_size || j < right_size) {
+		if (i < left_size && j < right_size) {
+			cJSON *left_item = cJSON_GetArrayItem(left, i);
+			cJSON *right_item = cJSON_GetArrayItem(right, j);
+			
+			if (json_value_equal(left_item, right_item, opts->strict_equality)) {
+				/* Equal items - advance both */
+				count++;
+				deleted_count++;
+				i++;
+				j++;
+			} else {
+				/* Look ahead to see if we can find a match */
+				bool found_match = false;
+				int look_ahead = 1;
+				
+				/* Check if left[i] appears later in right */
+				for (int k = j + 1; k < right_size && k < j + 3; k++) {
+					cJSON *future_right = cJSON_GetArrayItem(right, k);
+					if (json_value_equal(left_item, future_right, opts->strict_equality)) {
+						/* Insert items from right[j] to right[k-1] */
+						for (int ins = j; ins < k; ins++) {
+							cJSON *ins_item = cJSON_GetArrayItem(right, ins);
+							cJSON *ins_array = create_addition_array(ins_item);
+							if (ins_array) {
+								snprintf(index_str, sizeof(index_str), "%d", count);
+								cJSON_AddItemToObject(diff_obj, index_str, ins_array);
+								count++;
+								has_changes = true;
+							}
+						}
+						j = k;
+						found_match = true;
+						break;
+					}
+				}
+				
+				if (!found_match) {
+					/* Check if right[j] appears later in left */
+					for (int k = i + 1; k < left_size && k < i + 3; k++) {
+						cJSON *future_left = cJSON_GetArrayItem(left, k);
+						if (json_value_equal(right_item, future_left, opts->strict_equality)) {
+							/* Delete items from left[i] to left[k-1] */
+							for (int del = i; del < k; del++) {
+								cJSON *del_item = cJSON_GetArrayItem(left, del);
+								cJSON *del_array = create_deletion_array(del_item);
+								if (del_array) {
+									snprintf(index_str, sizeof(index_str), "_%d", deleted_count);
+									cJSON_AddItemToObject(diff_obj, index_str, del_array);
+									deleted_count++;
+									has_changes = true;
+								}
+							}
+							i = k;
+							found_match = true;
+							break;
+						}
+					}
+				}
+				
+				if (!found_match) {
+					/* Check for nested diff */
+					cJSON *sub_diff = json_diff(left_item, right_item, opts);
+					if (sub_diff) {
+						snprintf(index_str, sizeof(index_str), "%d", count);
+						cJSON_AddItemToObject(diff_obj, index_str, sub_diff);
+						has_changes = true;
+					} else {
+						/* Replace */
+						cJSON *change_array = create_change_array(left_item, right_item);
+						if (change_array) {
+							snprintf(index_str, sizeof(index_str), "%d", count);
+							cJSON_AddItemToObject(diff_obj, index_str, change_array);
+							has_changes = true;
+						}
+					}
+					count++;
+					deleted_count++;
+					i++;
+					j++;
 				}
 			}
-		} else if (left_item) {
-			/* Deletion */
+		} else if (i < left_size) {
+			/* Delete remaining items from left */
+			cJSON *left_item = cJSON_GetArrayItem(left, i);
 			cJSON *del_array = create_deletion_array(left_item);
 			if (del_array) {
-				snprintf(index_str, sizeof(index_str), "_%d", i);
+				snprintf(index_str, sizeof(index_str), "_%d", deleted_count);
 				cJSON_AddItemToObject(diff_obj, index_str, del_array);
+				deleted_count++;
 				has_changes = true;
 			}
-		} else if (right_item) {
-			/* Insertion */
+			i++;
+		} else {
+			/* Insert remaining items from right */
+			cJSON *right_item = cJSON_GetArrayItem(right, j);
 			cJSON *ins_array = create_addition_array(right_item);
 			if (ins_array) {
-				snprintf(index_str, sizeof(index_str), "%d", i);
+				snprintf(index_str, sizeof(index_str), "%d", count);
 				cJSON_AddItemToObject(diff_obj, index_str, ins_array);
+				count++;
 				has_changes = true;
 			}
+			j++;
 		}
 	}
 
@@ -209,6 +288,20 @@ static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
 
 	cJSON_Delete(diff_obj);
 	return NULL;
+}
+
+/**
+ * diff_arrays - Create diff for two cJSON arrays
+ * @left: first array
+ * @right: second array
+ * @opts: diff options
+ *
+ * Return: diff object or NULL if arrays are equal
+ */
+static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
+			  const struct json_diff_options *opts)
+{
+	return myers_diff_arrays(left, right, opts);
 }
 
 /**
@@ -291,7 +384,7 @@ cJSON *json_diff(const cJSON *left, const cJSON *right,
 }
 
 /**
- * patch_array - Apply array diff to an array
+ * patch_array - Apply array diff to an array (following Elixir logic)
  * @original: original array
  * @diff: array diff object
  *
@@ -300,70 +393,105 @@ cJSON *json_diff(const cJSON *left, const cJSON *right,
 static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 {
 	cJSON *result = cJSON_CreateArray();
-	cJSON *orig_item;
 	int orig_size = cJSON_GetArraySize(original);
 	int i;
 
 	if (!result)
 		return NULL;
 
-	/* Copy original array */
+	/* First, create a working array with indices */
+	cJSON *working_array = cJSON_CreateArray();
+	if (!working_array) {
+		cJSON_Delete(result);
+		return NULL;
+	}
+
 	for (i = 0; i < orig_size; i++) {
-		orig_item = cJSON_GetArrayItem(original, i);
+		cJSON *orig_item = cJSON_GetArrayItem(original, i);
 		if (orig_item) {
 			cJSON *copy = cJSON_Duplicate(orig_item, 1);
 			if (copy)
-				cJSON_AddItemToArray(result, copy);
+				cJSON_AddItemToArray(working_array, copy);
 		}
 	}
 
-	/* Apply changes from diff */
+	/* Apply deletions first (in reverse order to maintain indices) */
 	cJSON *diff_item = diff->child;
+	int *delete_indices = NULL;
+	int delete_count = 0;
+	
+	/* Collect deletion indices */
+	while (diff_item) {
+		const char *key = diff_item->string;
+		if (key[0] == '_' && strcmp(key, ARRAY_MARKER) != 0) {
+			int index = atoi(key + 1);
+			delete_indices = realloc(delete_indices, (delete_count + 1) * sizeof(int));
+			if (delete_indices) {
+				delete_indices[delete_count] = index;
+				delete_count++;
+			}
+		}
+		diff_item = diff_item->next;
+	}
+
+	/* Sort deletion indices in descending order */
+	for (i = 0; i < delete_count - 1; i++) {
+		for (int j = i + 1; j < delete_count; j++) {
+			if (delete_indices[i] < delete_indices[j]) {
+				int temp = delete_indices[i];
+				delete_indices[i] = delete_indices[j];
+				delete_indices[j] = temp;
+			}
+		}
+	}
+
+	/* Apply deletions */
+	for (i = 0; i < delete_count; i++) {
+		int index = delete_indices[i];
+		if (index >= 0 && index < cJSON_GetArraySize(working_array)) {
+			cJSON_DeleteItemFromArray(working_array, index);
+		}
+	}
+	free(delete_indices);
+
+	/* Now apply additions and modifications */
+	diff_item = diff->child;
 	while (diff_item) {
 		const char *key = diff_item->string;
 
-		if (strcmp(key, ARRAY_MARKER) == 0) {
+		if (strcmp(key, ARRAY_MARKER) == 0 || key[0] == '_') {
 			diff_item = diff_item->next;
-			continue; /* Skip array marker */
+			continue;
 		}
 
-		if (key[0] == '_') {
-			/* Deletion - key format is "_index" */
-			int index = atoi(key + 1);
-			if (index >= 0 && index < cJSON_GetArraySize(result)) {
-				cJSON_DeleteItemFromArray(result, index);
-			}
-		} else {
-			/* Addition or modification - key is index */
-			int index = atoi(key);
-			if (cJSON_IsArray(diff_item)) {
-				int array_size = cJSON_GetArraySize(diff_item);
-				if (array_size == 1) {
-					/* Addition */
-					cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
-					if (new_val) {
-						if (index >= cJSON_GetArraySize(result)) {
-							cJSON_AddItemToArray(result, new_val);
-						} else {
-							cJSON_InsertItemInArray(result, index, new_val);
-						}
-					}
-				} else if (array_size == 2) {
-					/* Replacement */
-					cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
-					if (new_val && index < cJSON_GetArraySize(result)) {
-						cJSON_ReplaceItemInArray(result, index, new_val);
+		int index = atoi(key);
+		if (cJSON_IsArray(diff_item)) {
+			int array_size = cJSON_GetArraySize(diff_item);
+			if (array_size == 1) {
+				/* Addition */
+				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
+				if (new_val) {
+					if (index >= cJSON_GetArraySize(working_array)) {
+						cJSON_AddItemToArray(working_array, new_val);
+					} else {
+						cJSON_InsertItemInArray(working_array, index, new_val);
 					}
 				}
-			} else {
-				/* Nested diff */
-				if (index < cJSON_GetArraySize(result)) {
-					cJSON *orig_val = cJSON_GetArrayItem(result, index);
-					if (orig_val) {
-						cJSON *patched = json_patch(orig_val, diff_item);
-						if (patched) {
-							cJSON_ReplaceItemInArray(result, index, patched);
-						}
+			} else if (array_size == 2) {
+				/* Replacement */
+				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
+				if (new_val && index < cJSON_GetArraySize(working_array)) {
+					cJSON_ReplaceItemInArray(working_array, index, new_val);
+				}
+			}
+		} else {
+			/* Nested diff */
+			if (index < cJSON_GetArraySize(working_array)) {
+				cJSON *orig_val = cJSON_GetArrayItem(working_array, index);
+				if (orig_val) {
+					cJSON *patched = json_patch(orig_val, diff_item);
+					if (patched) {
+						cJSON_ReplaceItemInArray(working_array, index, patched);
 					}
 				}
 			}
@@ -371,6 +499,18 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 		diff_item = diff_item->next;
 	}
 
+	/* Copy final result */
+	int final_size = cJSON_GetArraySize(working_array);
+	for (i = 0; i < final_size; i++) {
+		cJSON *item = cJSON_GetArrayItem(working_array, i);
+		if (item) {
+			cJSON *copy = cJSON_Duplicate(item, 1);
+			if (copy)
+				cJSON_AddItemToArray(result, copy);
+		}
+	}
+
+	cJSON_Delete(working_array);
 	return result;
 }
 
