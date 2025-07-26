@@ -69,11 +69,45 @@ bench_parse_exe = executable('bench_parse',
 )
 ## bench-parse run_target removed due to Meson introspect bug; run manually
 
+# Generative testing executable
+generative_exe = executable('test_generative',
+  'tests/test_generative.c',
+  link_with : json_diff_lib,
+  dependencies : [cjson_dep, math_dep],
+  install : false
+)
+
+# Property testing executable
+property_exe = executable('test_properties',
+  'tests/test_properties.c',
+  link_with : json_diff_lib,
+  dependencies : [cjson_dep, math_dep],
+  install : false
+)
+
+# Add run targets for generative testing
+run_target('gen-test',
+  command : [generative_exe, '--tests', '1000']
+)
+
+run_target('gen-test-quick', 
+  command : [generative_exe, '--tests', '100']
+)
+
+run_target('gen-test-extensive',
+  command : [generative_exe, '--tests', '5000']
+)
+
+# Add run target for property testing
+run_target('prop-test',
+  command : [property_exe]
+)
+
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')
 if cc.has_argument('-fsanitize=fuzzer')
   fuzz_exe = executable('fuzz_json_diff',
-    'fuzz_json_diff.c',
+    'tests/fuzz_json_diff.c',
     link_with : json_diff_lib,
     dependencies : [cjson_dep, math_dep],
     c_args : ['-fsanitize=fuzzer', '-g'],

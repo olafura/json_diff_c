@@ -3,7 +3,8 @@
 BUILD_DIR := builddir
 
 .PHONY: all setup build test bench bench-medium bench-pipeline bench-parse bench-jsmn profile \
-        install clean fuzz fuzz-long fuzz-custom tidy tidy-fix format format-check
+        install clean fuzz fuzz-long fuzz-custom tidy tidy-fix format format-check \
+        advanced-test gen-test-quick gen-test gen-test-extensive prop-test
 
 all: build
 
@@ -38,13 +39,13 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 fuzz: build
-	meson run fuzz -C $(BUILD_DIR)
+	cd $(BUILD_DIR) && meson run fuzz
 
 fuzz-long: build
-	meson run fuzz-long -C $(BUILD_DIR)
+	cd $(BUILD_DIR) && meson run fuzz-long
 
 fuzz-custom: build
-	meson run fuzz-custom -C $(BUILD_DIR)
+	cd $(BUILD_DIR) && meson run fuzz-custom
 
 tidy:
 	rg -l --glob '*.c' --glob '*.h' --null src \
@@ -61,3 +62,24 @@ format:
 format-check:
 	rg -l --glob '*.c' --glob '*.h' --null . \
 		| xargs -0 clang-format --dry-run --Werror
+
+# Advanced testing targets
+advanced-test: build
+	@echo "Running advanced testing suite..."
+	@./run_advanced_tests.sh
+
+gen-test-quick: build
+	@echo "Running quick generative tests..."
+	@./$(BUILD_DIR)/test_generative --tests 100
+
+gen-test: build
+	@echo "Running standard generative tests..."
+	@./$(BUILD_DIR)/test_generative --tests 1000
+
+gen-test-extensive: build
+	@echo "Running extensive generative tests..."
+	@./$(BUILD_DIR)/test_generative --tests 5000
+
+prop-test: build
+	@echo "Running property tests..."
+	@./$(BUILD_DIR)/test_properties

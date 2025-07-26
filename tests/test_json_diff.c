@@ -308,10 +308,15 @@ static void test_array_diff_all_changed(void)
 
 	/* Addition and deletion at each index */
 	for (int i = 0; i < 3; ++i) {
-		char idx[2];
-		char delidx[3];
-		snprintf(idx, sizeof(idx), "%d", i);
-		snprintf(delidx, sizeof(delidx), "_%d", i);
+		char idx[16];
+		char delidx[16];
+		/* Use simple assignment for single digits to avoid snprintf
+		 * warnings */
+		idx[0] = '0' + (char)i;
+		idx[1] = '\0';
+		delidx[0] = '_';
+		delidx[1] = '0' + (char)i;
+		delidx[2] = '\0';
 		/* addition array [new_value] */
 		cJSON *add = cJSON_GetObjectItem(test_diff, idx);
 		assert(add != NULL && cJSON_IsArray(add));
