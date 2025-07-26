@@ -175,7 +175,12 @@ int json_array_append(struct json_array *array, const struct json_value *value)
 		array->capacity = new_capacity;
 	}
 
-	array->values[array->count] = *json_value_clone(value);
+	struct json_value *cloned_value = json_value_clone(value);
+	if (!cloned_value)
+		return -1;
+	
+	array->values[array->count] = *cloned_value;
+	free(cloned_value); /* Free the wrapper, keep the contents */
 	array->count++;
 	return 0;
 }
@@ -200,7 +205,11 @@ int json_object_set(struct json_object *object, const char *key,
 	for (i = 0; i < object->count; i++) {
 		if (strcmp(object->pairs[i].key, key) == 0) {
 			json_value_free(&object->pairs[i].value);
-			object->pairs[i].value = *json_value_clone(value);
+			struct json_value *cloned_value = json_value_clone(value);
+			if (!cloned_value)
+				return -1;
+			object->pairs[i].value = *cloned_value;
+			free(cloned_value); /* Free the wrapper, keep the contents */
 			return 0;
 		}
 	}
@@ -221,8 +230,15 @@ int json_object_set(struct json_object *object, const char *key,
 	if (!key_copy)
 		return -1;
 
+	struct json_value *cloned_value = json_value_clone(value);
+	if (!cloned_value) {
+		free(key_copy);
+		return -1;
+	}
+	
 	object->pairs[object->count].key = key_copy;
-	object->pairs[object->count].value = *json_value_clone(value);
+	object->pairs[object->count].value = *cloned_value;
+	free(cloned_value); /* Free the wrapper, keep the contents */
 	object->count++;
 	return 0;
 }
@@ -358,10 +374,10 @@ struct json_value *json_value_clone(const struct json_value *value)
 }
 
 /**
- * json_value_free - Free a JSON value and its contents
- * @value: value to free
+ * json_value_free_contents - Free contents of a JSON value (not the value itself)
+ * @value: value whose contents to free
  */
-void json_value_free(struct json_value *value)
+static void json_value_free_contents(struct json_value *value)
 {
 	size_t i;
 
@@ -371,25 +387,43 @@ void json_value_free(struct json_value *value)
 	switch (value->type) {
 	case JSON_STRING:
 		free(value->data.string_val);
+		value->data.string_val = NULL;
 		break;
 	case JSON_ARRAY:
-		for (i = 0; i < value->data.array_val->count; i++)
-			json_value_free(&value->data.array_val->values[i]);
-		free(value->data.array_val->values);
-		free(value->data.array_val);
+		if (value->data.array_val) {
+			for (i = 0; i < value->data.array_val->count; i++)
+				json_value_free_contents(&value->data.array_val->values[i]);
+			free(value->data.array_val->values);
+			free(value->data.array_val);
+			value->data.array_val = NULL;
+		}
 		break;
 	case JSON_OBJECT:
-		for (i = 0; i < value->data.object_val->count; i++) {
-			free(value->data.object_val->pairs[i].key);
-			json_value_free(&value->data.object_val->pairs[i].value);
+		if (value->data.object_val) {
+			for (i = 0; i < value->data.object_val->count; i++) {
+				free(value->data.object_val->pairs[i].key);
+				json_value_free_contents(&value->data.object_val->pairs[i].value);
+			}
+			free(value->data.object_val->pairs);
+			free(value->data.object_val);
+			value->data.object_val = NULL;
 		}
-		free(value->data.object_val->pairs);
-		free(value->data.object_val);
 		break;
 	default:
 		break;
 	}
+}
 
+/**
+ * json_value_free - Free a JSON value and its contents
+ * @value: value to free
+ */
+void json_value_free(struct json_value *value)
+{
+	if (!value)
+		return;
+
+	json_value_free_contents(value);
 	free(value);
 }
 

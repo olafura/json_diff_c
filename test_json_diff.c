@@ -39,8 +39,7 @@ static void test_basic_diff(void)
 	json_value_free(obj1);
 	json_value_free(obj2);
 	json_value_free(diff);
-	json_value_free(val1);
-	json_value_free(val2);
+	/* val1 and val2 are freed when obj1 and obj2 are freed */
 
 	printf("Basic diff test passed!\n");
 }
@@ -92,11 +91,7 @@ static void test_array_diff(void)
 	json_value_free(obj1);
 	json_value_free(obj2);
 	json_value_free(diff);
-	json_value_free(arr1);
-	json_value_free(arr2);
-	json_value_free(val1);
-	json_value_free(val2);
-	json_value_free(val3);
+	/* arr1, arr2, val1, val2, val3 are freed when obj1 and obj2 are freed */
 
 	printf("Array diff test passed!\n");
 }
@@ -135,8 +130,7 @@ static void test_patch(void)
 	json_value_free(obj2);
 	json_value_free(diff);
 	json_value_free(patched);
-	json_value_free(val1);
-	json_value_free(val2);
+	/* val1 and val2 are freed when obj1 and obj2 are freed */
 
 	printf("Patch test passed!\n");
 }
@@ -174,8 +168,7 @@ static void test_strict_equality(void)
 
 	json_value_free(obj1);
 	json_value_free(obj2);
-	json_value_free(val1);
-	json_value_free(val2);
+	/* val1 and val2 are freed when obj1 and obj2 are freed */
 
 	printf("Strict equality test passed!\n");
 }
@@ -200,7 +193,7 @@ static void test_same_object(void)
 	assert(diff == NULL); /* Should be NULL for identical objects */
 
 	json_value_free(obj1);
-	json_value_free(val1);
+	/* val1 is freed when obj1 is freed */
 
 	printf("Same object test passed!\n");
 }
