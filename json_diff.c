@@ -188,7 +188,6 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 			} else {
 				/* Look ahead to see if we can find a match */
 				bool found_match = false;
-				int look_ahead = 1;
 				
 				/* Check if left[i] appears later in right */
 				for (int k = j + 1; k < right_size && k < j + 3; k++) {
