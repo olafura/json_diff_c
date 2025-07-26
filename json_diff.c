@@ -197,8 +197,6 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 
 	char index_str[32];
 	bool has_changes = false;
-	int count = 0;
-	int deleted_count = 0;
 
 	/* Simple linear scan for now - can be optimized with proper Myers later */
 	int min_size = (left_size < right_size) ? left_size : right_size;
