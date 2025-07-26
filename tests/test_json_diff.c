@@ -777,7 +777,21 @@ static void test_bigger_patch(void)
 	assert(obj1 && obj2 && diff);
 
 	patched = json_patch(obj1, diff);
-	assert(patched && json_value_equal(patched, obj2, false));
+	if (!patched || !json_value_equal(patched, obj2, false)) {
+		printf("ERROR: Bigger patch test failed!\n");
+		if (!patched) {
+			printf("  - json_patch returned NULL\n");
+		} else {
+			printf("  - Patched result does not equal expected\n");
+		}
+		cJSON_Delete(obj1);
+		cJSON_Delete(obj2);
+		cJSON_Delete(diff);
+		if (patched) cJSON_Delete(patched);
+		free(s1);
+		free(s2);
+		return;
+	}
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
