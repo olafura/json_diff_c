@@ -54,8 +54,21 @@ static void test_basic_diff(void)
 
 	/* Test diff */
 	diff = json_diff(obj1, obj2, NULL);
-	assert(diff != NULL);
-	assert(cJSON_IsObject(diff));
+	if (!diff) {
+		printf("ERROR: json_diff returned NULL\n");
+		printf("Basic diff test failed!\n");
+		cJSON_Delete(obj1);
+		cJSON_Delete(obj2);
+		return;
+	}
+	if (!cJSON_IsObject(diff)) {
+		printf("ERROR: diff is not an object\n");
+		printf("Basic diff test failed!\n");
+		cJSON_Delete(diff);
+		cJSON_Delete(obj1);
+		cJSON_Delete(obj2);
+		return;
+	}
 
 	/* Verify diff contains test: [1, 2] */
 	cJSON *test_diff = cJSON_GetObjectItem(diff, "test");
