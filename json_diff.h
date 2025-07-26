@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 #ifndef JSON_DIFF_H
 #define JSON_DIFF_H
 

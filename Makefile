@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: Apache-2.0
 
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -Werror -O2 -g
