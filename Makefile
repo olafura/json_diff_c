@@ -66,6 +66,9 @@ bench-parse: tests/bench_parse.o $(OBJECTS)
 tests/jsmn.o: tests/jsmn.c tests/jsmn.h
 	$(CC) $(CFLAGS) -c $< -o tests/jsmn.o
 
+tests/bench_jsmn.o: tests/bench_jsmn.c tests/jsmn.h
+	$(CC) $(CFLAGS) -Isrc -c $< -o tests/bench_jsmn.o
+
 bench-jsmn: tests/bench_jsmn.o tests/jsmn.o $(OBJECTS)
 	$(CC) -o bench_jsmn tests/bench_jsmn.o tests/jsmn.o $(OBJECTS) $(LDFLAGS)
 	./bench_jsmn

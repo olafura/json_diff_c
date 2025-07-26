@@ -5,6 +5,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include "src/json_diff.h"
+#include "src/parse_jsmn.h"
+#include "jsmn.h"
 
 /**
  * read_file - Read entire file into a string
@@ -69,8 +71,12 @@ static void profile_medium(void)
 		goto cleanup;
 	}
 
-	cdc_json = cJSON_Parse(cdc_content);
-	edg_json = cJSON_Parse(edg_content);
+	// Parse JSON via JSMN->cJSON (arena) for end-to-end performance
+	struct json_diff_arena arena;
+	json_diff_arena_init(&arena, 1 << 20);
+	struct json_diff_options opts = { .strict_equality = true, .arena = &arena };
+	cdc_json = cjson_parse_jsmn(cdc_content, &opts);
+	edg_json = cjson_parse_jsmn(edg_content, &opts);
 
 	if (!cdc_json || !edg_json) {
 		printf("Could not parse JSON for medium test\n");
@@ -93,12 +99,13 @@ static void profile_medium(void)
 	       end_time - start_time, (end_time - start_time) / 50.0);
 
 cleanup:
-	if (cdc_json)
-		cJSON_Delete(cdc_json);
-	if (edg_json)
-		cJSON_Delete(edg_json);
-	free(cdc_content);
-	free(edg_content);
+		if (cdc_json)
+			cJSON_Delete(cdc_json);
+		if (edg_json)
+			cJSON_Delete(edg_json);
+		json_diff_arena_cleanup(&arena);
+		free(cdc_content);
+		free(edg_content);
 }
 
 /**
@@ -117,8 +124,12 @@ static void profile_big(void)
 		goto cleanup;
 	}
 
-	big1_json = cJSON_Parse(big1_content);
-	big2_json = cJSON_Parse(big2_content);
+		// Parse large JSON via JSMN->cJSON (arena) for end-to-end perf
+		struct json_diff_arena arena;
+		json_diff_arena_init(&arena, 1 << 20);
+		struct json_diff_options opts = { .strict_equality = true, .arena = &arena };
+		big1_json = cjson_parse_jsmn(big1_content, &opts);
+		big2_json = cjson_parse_jsmn(big2_content, &opts);
 
 	if (!big1_json || !big2_json) {
 		printf("Could not parse JSON for big test\n");
@@ -141,10 +152,11 @@ static void profile_big(void)
 cleanup:
 	if (big1_json)
 		cJSON_Delete(big1_json);
-	if (big2_json)
-		cJSON_Delete(big2_json);
-	free(big1_content);
-	free(big2_content);
+		if (big2_json)
+			cJSON_Delete(big2_json);
+		json_diff_arena_cleanup(&arena);
+		free(big1_content);
+		free(big2_content);
 }
 
 /**

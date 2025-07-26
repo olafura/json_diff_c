@@ -17,7 +17,7 @@ math_dep = meson.get_compiler('c').find_library('m', required : false)
 
 # Library
 json_diff_lib = static_library('jsondiff',
-  'src/json_diff.c',
+  'src/json_diff.c', 'src/parse_jsmn.c',
   dependencies : [cjson_dep, math_dep],
   install : true,
   install_dir : get_option('libdir')
@@ -71,7 +71,7 @@ bench_parse_exe = executable('bench_parse',
 
 # JSMN parse benchmark (vs. cJSON)
 bench_jsmn_exe = executable('bench_jsmn',
-  'tests/bench_jsmn.c', 'tests/jsmn.c',
+  'tests/bench_jsmn.c', 'src/jsmn.c',
   install : false
 )
 ## bench-jsmn run_target removed; run manually

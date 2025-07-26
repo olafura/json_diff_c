@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include "tests/jsmn.h"
+#include "jsmn.h"
 #include <string.h>
 #include <string.h>
 
