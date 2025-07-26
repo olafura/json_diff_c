@@ -2,6 +2,8 @@
 
 A C11 implementation of JSON diffing and patching functionality, following the Linux Kernel Style Guide.
 
+This is just experimental and hasn't been optimised at all.
+
 ## Features
 
 - **Diff**: Create diffs between two JSON structures
