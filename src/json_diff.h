@@ -6,16 +6,46 @@
 #include <cjson/cJSON.h>
 
 /**
+ * struct json_diff_arena - Arena for diff allocations
+ * @buf: internal buffer for allocations
+ * @capacity: total buffer capacity in bytes
+ * @offset: current used bytes (bump pointer)
+ */
+struct json_diff_arena {
+    char *buf;
+    size_t capacity;
+    size_t offset;
+};
+
+/**
  * struct json_diff_options - Options for JSON diffing
  * @strict_equality: use strict equality comparison for numbers
  */
 struct json_diff_options {
+    /**
+     * strict_equality - use strict equality comparison for numbers
+     * arena: optional arena for diff allocations (NULL for heap alloc)
+     */
 	bool strict_equality;
+	struct json_diff_arena *arena;
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * json_diff_arena_init - Initialize a diff allocation arena
+ * @arena: arena struct to initialize
+ * @initial_capacity: initial buffer size in bytes
+ */
+void json_diff_arena_init(struct json_diff_arena *arena, size_t initial_capacity);
+
+/**
+ * json_diff_arena_cleanup - Free resources held by a diff arena
+ * @arena: arena struct to cleanup
+ */
+void json_diff_arena_cleanup(struct json_diff_arena *arena);
 
 /* Core API functions */
 

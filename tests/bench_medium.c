@@ -55,17 +55,25 @@ int main(void) {
         return 1;
     }
 
+    // Set up arena-based allocations for diff
+    struct json_diff_arena arena;
+    json_diff_arena_init(&arena, 1 << 20); // 1MB initial arena
+    struct json_diff_options opts = {
+        .strict_equality = true,
+        .arena = &arena
+    };
+
     // Warm-up iterations
     for (int i = 0; i < 5; i++) {
-        cJSON *d = json_diff(left, right, NULL);
-        if (d) cJSON_Delete(d);
+        cJSON *d = json_diff(left, right, &opts);
+        (void)d;
     }
 
     const int iterations = 50;
     double t0 = get_time_ms();
     for (int i = 0; i < iterations; i++) {
-        cJSON *d = json_diff(left, right, NULL);
-        if (d) cJSON_Delete(d);
+        cJSON *d = json_diff(left, right, &opts);
+        (void)d;
     }
     double t1 = get_time_ms();
 
@@ -76,6 +84,7 @@ int main(void) {
 
     cJSON_Delete(left);
     cJSON_Delete(right);
+    json_diff_arena_cleanup(&arena);
     free(left_buf);
     free(right_buf);
     return 0;

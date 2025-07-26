@@ -61,6 +61,16 @@ run_target('bench-medium',
   command : [bench_medium_exe]
 )
 
+# Parser performance micro‑benchmark
+bench_parse_exe = executable('bench_parse',
+  'tests/bench_parse.c',
+  dependencies : [cjson_dep],
+  install : false
+)
+run_target('bench-parse',
+  command : [bench_parse_exe]
+)
+
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')
 if cc.has_argument('-fsanitize=fuzzer')

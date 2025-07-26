@@ -15,7 +15,7 @@ TARGET       = libjsondiff.a
 TEST_TARGET  = test_json_diff
 BENCH_TARGET = bench_medium
 
-.PHONY: all clean test bench meson-setup meson-compile meson-test meson-profile meson-clean
+.PHONY: all clean test bench bench-parse meson-setup meson-compile meson-test meson-profile meson-clean
 
 all: $(TARGET) $(TEST_TARGET) $(BENCH_TARGET)
 
@@ -55,6 +55,13 @@ test: $(TEST_TARGET)
 
 bench: $(BENCH_TARGET)
 	./$(BENCH_TARGET)
+
+tests/bench_parse.o: tests/bench_parse.c $(HEADERS)
+	$(CC) $(CFLAGS) -Isrc -c $< -o $@
+
+bench-parse: tests/bench_parse.o $(OBJECTS)
+	$(CC) -o bench_parse tests/bench_parse.o $(OBJECTS) $(LDFLAGS)
+	./bench_parse
 
 clean:
 	rm -f $(OBJECTS) $(TEST_OBJECTS) $(TARGET) $(TEST_TARGET)

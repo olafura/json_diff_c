@@ -7,6 +7,44 @@
 #include <errno.h>
 #include "json_diff.h"
 
+/* Include for arena allocator */
+#include <stdlib.h>
+#include <string.h>
+
+/* Arena-based allocation hooks for diff trees */
+static __thread struct json_diff_arena *current_arena = NULL;
+
+static void *arena_malloc(size_t size) {
+    size_t off = (current_arena->offset + sizeof(void*) - 1) & ~(sizeof(void*) - 1);
+    if (off + size > current_arena->capacity) {
+        size_t newcap = current_arena->capacity ? current_arena->capacity * 2 : size * 2;
+        while (newcap < off + size) newcap *= 2;
+        char *newbuf = realloc(current_arena->buf, newcap);
+        if (!newbuf) return NULL;
+        current_arena->buf = newbuf;
+        current_arena->capacity = newcap;
+    }
+    void *ptr = current_arena->buf + off;
+    current_arena->offset = off + size;
+    return ptr;
+}
+
+static void arena_free(void *ptr) {
+    (void)ptr;
+}
+
+void json_diff_arena_init(struct json_diff_arena *arena, size_t initial_capacity) {
+    arena->buf = malloc(initial_capacity);
+    arena->capacity = initial_capacity;
+    arena->offset = 0;
+}
+
+void json_diff_arena_cleanup(struct json_diff_arena *arena) {
+    free(arena->buf);
+    arena->buf = NULL;
+    arena->capacity = arena->offset = 0;
+}
+
 #define ARRAY_MARKER "_t"
 #define ARRAY_MARKER_VALUE "a"
 
@@ -339,15 +377,15 @@ static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
 }
 
 /**
- * json_diff - Create a diff between two cJSON values
+ * do_json_diff - Core implementation of diff without arena setup
  * @left: first JSON value
  * @right: second JSON value
- * @opts: diff options (can be NULL for defaults)
+ * @opts: diff options (must not be NULL)
  *
  * Return: diff object or NULL if values are equal
  */
-cJSON *json_diff(const cJSON *left, const cJSON *right,
-		 const struct json_diff_options *opts)
+static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
+                          const struct json_diff_options *opts)
 {
 	struct json_diff_options default_opts = { .strict_equality = true };
 	cJSON *diff_obj;
@@ -578,6 +616,36 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 	return result;
 }
 
+/**
+ * json_diff - Public wrapper that sets up optional arena before diff
+ * @left: first JSON value
+ * @right: second JSON value
+ * @opts: diff options (can be NULL for defaults, opts->arena may be used)
+ *
+ * Return: diff object or NULL if values are equal
+ */
+cJSON *json_diff(const cJSON *left, const cJSON *right,
+                 const struct json_diff_options *opts)
+{
+    struct json_diff_options default_opts = { .strict_equality = true, .arena = NULL };
+    if (!opts)
+        opts = &default_opts;
+    if (opts->arena) {
+        current_arena = opts->arena;
+        opts->arena->offset = 0;
+        cJSON_Hooks h = { arena_malloc, arena_free };
+        cJSON_InitHooks(&h);
+    }
+
+    cJSON *res = do_json_diff(left, right, opts);
+
+    if (opts->arena) {
+        cJSON_Hooks h = { malloc, free };
+        cJSON_InitHooks(&h);
+        current_arena = NULL;
+    }
+    return res;
+}
 /**
  * json_patch - Apply a diff to a cJSON value
  * @original: original JSON value
