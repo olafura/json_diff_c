@@ -29,7 +29,7 @@ math_dep = meson.get_compiler('c').find_library('m', required : false)
 
 # Library
 json_diff_lib = static_library('jsondiff',
-  'src/json_diff.c', 'src/parse_jsmn.c',
+  'src/json_diff.c', 'src/parse_jsmn.c', 'src/jsmn_tree.c', 'src/jsmn.c',
   dependencies : [cjson_dep, math_dep],
   install : true,
   install_dir : get_option('libdir')
