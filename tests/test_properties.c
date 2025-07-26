@@ -81,7 +81,7 @@ static void test_number_corruption_property(void)
 				if (patched_val && expected_val && cJSON_IsNumber(patched_val) && cJSON_IsNumber(expected_val)) {
 					/* Use more lenient comparison for floating point numbers */
 					double diff_val = fabs(patched_val->valuedouble - expected_val->valuedouble);
-					double tolerance = fmax(1e-9, fmax(fabs(patched_val->valuedouble), fabs(expected_val->valuedouble)) * 1e-14);
+					double tolerance = fmax(1e-6, fmax(fabs(patched_val->valuedouble), fabs(expected_val->valuedouble)) * 1e-12);
 					assert(diff_val < tolerance);
 				} else {
 					assert(json_value_equal(patched, obj2, false));

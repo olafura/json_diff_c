@@ -295,12 +295,17 @@ static bool test_patch_roundtrip(const cJSON *json1, const cJSON *json2)
 		/* Use loose equality to handle floating point precision and reference issues */
 		result = json_value_equal(patched, json2, false);
 		
-		/* If loose equality fails, try a more lenient comparison for known edge cases */
+		/* If loose equality fails, check for acceptable differences */
 		if (!result) {
-			/* Check if this is just a type conversion issue (e.g., {} vs []) */
-			if ((cJSON_IsObject(json2) && cJSON_IsArray(patched) && cJSON_GetArraySize(patched) == 0) ||
-			    (cJSON_IsArray(json2) && cJSON_IsObject(patched) && cJSON_GetArraySize(patched) == 0)) {
-				result = true;
+			/* For debugging: print the actual vs expected when they differ */
+			if (getenv("DEBUG_DIFF")) {
+				char *patched_str = cJSON_Print(patched);
+				char *expected_str = cJSON_Print(json2);
+				printf("PATCH MISMATCH:\nExpected: %s\nActual: %s\n", 
+				       expected_str ? expected_str : "NULL",
+				       patched_str ? patched_str : "NULL");
+				free(patched_str);
+				free(expected_str);
 			}
 		}
 		

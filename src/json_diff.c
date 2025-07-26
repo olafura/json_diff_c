@@ -435,9 +435,13 @@ static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
 	if (json_value_equal(left, right, opts->strict_equality))
 		return NULL;
 
-	if (!left || !right || left->type != right->type ||
-	    (left->type != cJSON_Object && left->type != cJSON_Array)) {
-		/* Simple value change */
+	if (!left || !right || left->type != right->type) {
+		/* Simple value change - type mismatch or null values */
+		return create_change_array(left, right);
+	}
+
+	if (left->type != cJSON_Object && left->type != cJSON_Array) {
+		/* Simple value change for non-container types */
 		return create_change_array(left, right);
 	}
 
