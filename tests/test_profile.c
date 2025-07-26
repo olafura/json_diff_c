@@ -5,6 +5,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include "src/json_diff.h"
+#include "parse_jsmn.h"
+#include "jsmn.h"
 #include "src/parse_jsmn.h"
 #include "jsmn.h"
 
@@ -71,12 +73,22 @@ static void profile_medium(void)
 		goto cleanup;
 	}
 
-	// Parse JSON via JSMN->cJSON (arena) for end-to-end performance
-	struct json_diff_arena arena;
-	json_diff_arena_init(&arena, 1 << 20);
-	struct json_diff_options opts = { .strict_equality = true, .arena = &arena };
-	cdc_json = cjson_parse_jsmn(cdc_content, &opts);
-	edg_json = cjson_parse_jsmn(edg_content, &opts);
+    // Load & parse JSON via JSMN->cJSON (arena) for end-to-end parse+diff
+    char *left_json  = read_file("../profile-data/cdc.json");
+    char *right_json = read_file("../profile-data/edg.json");
+    if (!left_json || !right_json) {
+        printf("Could not read medium profile JSON files\n");
+        free(left_json);
+        free(right_json);
+        goto cleanup;
+    }
+
+    struct json_diff_arena arena;
+    json_diff_arena_init(&arena, 1 << 20);
+    struct json_diff_options opts = { .strict_equality = true, .arena = &arena };
+    // Warmup or initial parse can be done here if needed
+    free(left_json);
+    free(right_json);
 
 	if (!cdc_json || !edg_json) {
 		printf("Could not parse JSON for medium test\n");
@@ -84,15 +96,13 @@ static void profile_medium(void)
 	}
 
 
-	printf("Running medium profile test (50 iterations)...\n");
-	start_time = get_time_ms();
+    printf("Running medium profile test (parse+diff; 50 iterations)...\n");
+    start_time = get_time_ms();
 
-	for (i = 0; i < 50; i++) {
-		cJSON *diff = json_diff(cdc_json, edg_json, NULL);
-		if (diff) {
-			cJSON_Delete(diff);
-		}
-	}
+    for (i = 0; i < 50; i++) {
+        cJSON *diff = json_diff_str(cdc_content, edg_content, &opts);
+        if (diff) cJSON_Delete(diff);
+    }
 
 	end_time = get_time_ms();
 	printf("Medium profile test completed in %.2f ms (avg: %.2f ms per diff)\n",

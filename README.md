@@ -39,6 +39,17 @@ cJSON *json_diff(const cJSON *left, const cJSON *right,
 cJSON *json_patch(const cJSON *original, const cJSON *diff);
 
 /**
+ * json_diff_str - Parse two JSON strings and compute diff
+ * @left: first JSON text string
+ * @right: second JSON text string
+ * @opts: diff options (can be NULL)
+ *
+ * Return: diff object or NULL if values are equal or on error
+ */
+cJSON *json_diff_str(const char *left, const char *right,
+                     const struct json_diff_options *opts);
+
+/**
  * json_value_equal - Compare two JSON values for equality
  * @left: first value
  * @right: second value
@@ -72,6 +83,13 @@ int main(void)
     
     // Verify result equals obj2
     assert(json_value_equal(patched, obj2, true));
+
+    // Or directly parse & diff JSON strings in one call
+    char *s1 = "{\"test\":1}";
+    char *s2 = "{\"test\":2}";
+    cJSON *str_diff = json_diff_str(s1, s2, NULL);
+    assert(str_diff != NULL);
+    cJSON_Delete(str_diff);
     
     // Cleanup
     cJSON_Delete(obj1);

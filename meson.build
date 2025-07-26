@@ -9,6 +9,18 @@ project('json-diff', 'c',
     'optimization=2',
     'debug=true'
   ]
+# end of bench-jsmn target
+)
+
+# End-to-end parse+diff pipeline micro-benchmark
+bench_pipeline_exe = executable('bench_pipeline',
+  'tests/bench_pipeline.c',
+  link_with : json_diff_lib,
+  dependencies : [cjson_dep],
+  install : false
+)
+run_target('bench-pipeline',
+  command : [bench_pipeline_exe]
 )
 
 # Dependencies

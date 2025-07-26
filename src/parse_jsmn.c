@@ -91,3 +91,25 @@ cJSON *cjson_parse_jsmn(const char *text, const struct json_diff_options *opts) 
     free(toks);
     return root;
 }
+
+/**
+ * json_diff_str - Parse two JSON strings via JSMN and diff them
+ */
+cJSON *json_diff_str(const char *left, const char *right,
+                     const struct json_diff_options *opts)
+{
+    struct json_diff_arena arena;
+    json_diff_arena_init(&arena, 1 << 20);
+    struct json_diff_options local_opts = {
+        .strict_equality = opts ? opts->strict_equality : true,
+        .arena = &arena
+    };
+    cJSON *l = cjson_parse_jsmn(left, &local_opts);
+    cJSON *r = cjson_parse_jsmn(right, &local_opts);
+    cJSON *diff = NULL;
+    if (l && r) diff = json_diff(l, r, &local_opts);
+    cJSON_Delete(l);
+    cJSON_Delete(r);
+    json_diff_arena_cleanup(&arena);
+    return diff;
+}

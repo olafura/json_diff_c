@@ -73,6 +73,13 @@ bench-jsmn: tests/bench_jsmn.o tests/jsmn.o $(OBJECTS)
 	$(CC) -o bench_jsmn tests/bench_jsmn.o tests/jsmn.o $(OBJECTS) $(LDFLAGS)
 	./bench_jsmn
 
+tests/bench_pipeline.o: tests/bench_pipeline.c tests/jsmn.h src/json_diff.h src/parse_jsmn.h
+	$(CC) $(CFLAGS) -Isrc -c $< -o tests/bench_pipeline.o
+
+bench-pipeline: tests/bench_pipeline.o $(OBJECTS)
+	$(CC) -o bench_pipeline tests/bench_pipeline.o $(OBJECTS) $(LDFLAGS)
+	./bench_pipeline
+
 clean:
 	rm -f $(OBJECTS) $(TEST_OBJECTS) $(TARGET) $(TEST_TARGET)
 	rm -rf builddir
