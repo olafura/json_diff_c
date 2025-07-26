@@ -2,8 +2,10 @@
 #include "src/json_diff.h"
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -91,7 +93,7 @@ static cJSON *fuzz_generate_object(const uint8_t *data, size_t size, int depth,
 
 	for (int i = 0; i < num_fields && chunk_size > 0; i++) {
 		char key[32];
-		snprintf(key, sizeof(key), "k%d", i);
+		(void)snprintf(key, sizeof(key), "k%d", i);
 
 		size_t offset = (size_t)i * chunk_size;
 		if (offset < size) {
@@ -185,8 +187,6 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 {
 	if (!original || size == 0)
 		return NULL;
-
-	double mutation_rate = (double)(data[0] % 100) / 100.0;
 
 	/* Simple mutation: if first bit is set, generate completely new JSON */
 	if (data[0] & 0x80) {
