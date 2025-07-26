@@ -287,7 +287,19 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 	}
 	}
 
-	return cJSON_Duplicate(original, 1);
+	if (cJSON_IsObject(original)) {
+		return cJSON_CreateObjectReference(original);
+	} else if (cJSON_IsArray(original)) {
+		return cJSON_CreateArrayReference(original);
+	} else if (cJSON_IsString(original)) {
+		return cJSON_CreateString(original->valuestring);
+	} else if (cJSON_IsNumber(original)) {
+		return cJSON_CreateNumber(original->valuedouble);
+	} else if (cJSON_IsBool(original)) {
+		return cJSON_CreateBool(cJSON_IsTrue(original));
+	} else {
+		return cJSON_CreateNull();
+	}
 }
 
 /* Property testing functions integrated into fuzzer */
