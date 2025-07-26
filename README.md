@@ -98,13 +98,40 @@ sudo dnf install cjson-devel
 brew install cjson
 ```
 
+You also need Meson build system:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install meson
+
+# CentOS/RHEL/Fedora
+sudo dnf install meson
+
+# macOS with Homebrew
+brew install meson
+
+# Or via pip
+pip install meson
+```
+
 ## Building
 
 ```bash
-make all          # Build library and tests
-make test         # Run tests
-make clean        # Clean build artifacts
-make install      # Install to system (requires root)
+meson setup builddir       # Configure build
+meson compile -C builddir  # Build library and tests
+meson test -C builddir     # Run tests
+meson install -C builddir  # Install to system (requires root)
+```
+
+### Alternative build commands
+
+```bash
+# Quick build and test
+meson setup builddir && meson compile -C builddir && meson test -C builddir
+
+# Clean build
+rm -rf builddir
+meson setup builddir
 ```
 
 ## Diff Format
