@@ -51,17 +51,17 @@ if cc.has_argument('-fsanitize=fuzzer')
   
   # Add a custom target for running the fuzzer
   run_target('fuzz',
-    command : [fuzz_exe, '-max_total_time=60', 'corpus/']
+    command : ['sh', '-c', 'mkdir -p corpus && echo \'{"test": 1}\' > corpus/simple1.json && echo \'{"test": 2}\' > corpus/simple2.json && echo \'{"arr": [1,2,3]}\' > corpus/array1.json && echo \'{"arr": [2,3,4]}\' > corpus/array2.json && ' + fuzz_exe.full_path() + ' -max_total_time=60 corpus/']
   )
   
   # Add a longer fuzzing session target
   run_target('fuzz-long',
-    command : [fuzz_exe, '-max_total_time=300', 'corpus/']
+    command : ['sh', '-c', 'mkdir -p corpus && echo \'{"test": 1}\' > corpus/simple1.json && echo \'{"test": 2}\' > corpus/simple2.json && echo \'{"arr": [1,2,3]}\' > corpus/array1.json && echo \'{"arr": [2,3,4]}\' > corpus/array2.json && ' + fuzz_exe.full_path() + ' -max_total_time=300 corpus/']
   )
   
   # Add a target to run fuzzer with custom arguments
   run_target('fuzz-custom',
-    command : [fuzz_exe, 'corpus/']
+    command : ['sh', '-c', 'mkdir -p corpus && echo \'{"test": 1}\' > corpus/simple1.json && echo \'{"test": 2}\' > corpus/simple2.json && echo \'{"arr": [1,2,3]}\' > corpus/array1.json && echo \'{"arr": [2,3,4]}\' > corpus/array2.json && ' + fuzz_exe.full_path() + ' corpus/']
   )
 endif
 
