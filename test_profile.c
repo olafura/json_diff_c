@@ -65,29 +65,16 @@ static void profile_medium(void)
 
 	if (!cdc_content || !edg_content) {
 		printf("Could not read profile data files for medium test\n");
-		printf("Creating simple test data instead...\n");
-		
-		/* Create simple test JSON objects */
-		cdc_json = cJSON_CreateObject();
-		cJSON_AddStringToObject(cdc_json, "test", "medium");
-		cJSON_AddNumberToObject(cdc_json, "value", 1);
-		
-		edg_json = cJSON_CreateObject();
-		cJSON_AddStringToObject(edg_json, "test", "medium");
-		cJSON_AddNumberToObject(edg_json, "value", 2);
-		
-		if (!cdc_json || !edg_json) {
-			printf("Could not create test JSON for medium test\n");
-			goto cleanup;
-		}
-	} else {
-		cdc_json = cJSON_Parse(cdc_content);
-		edg_json = cJSON_Parse(edg_content);
+		printf("Run: chmod +x profile-data/get_medium.sh && ./profile-data/get_medium.sh\n");
+		goto cleanup;
+	}
 
-		if (!cdc_json || !edg_json) {
-			printf("Could not parse JSON for medium test\n");
-			goto cleanup;
-		}
+	cdc_json = cJSON_Parse(cdc_content);
+	edg_json = cJSON_Parse(edg_content);
+
+	if (!cdc_json || !edg_json) {
+		printf("Could not parse JSON for medium test\n");
+		goto cleanup;
 	}
 
 
@@ -126,29 +113,16 @@ static void profile_big(void)
 
 	if (!big1_content || !big2_content) {
 		printf("Could not read profile data files for big test\n");
-		printf("Creating simple test data instead...\n");
-		
-		/* Create simple test JSON objects */
-		big1_json = cJSON_CreateObject();
-		cJSON_AddStringToObject(big1_json, "test", "big");
-		cJSON_AddNumberToObject(big1_json, "value", 100);
-		
-		big2_json = cJSON_CreateObject();
-		cJSON_AddStringToObject(big2_json, "test", "big");
-		cJSON_AddNumberToObject(big2_json, "value", 200);
-		
-		if (!big1_json || !big2_json) {
-			printf("Could not create test JSON for big test\n");
-			goto cleanup;
-		}
-	} else {
-		big1_json = cJSON_Parse(big1_content);
-		big2_json = cJSON_Parse(big2_content);
+		printf("Run: chmod +x profile-data/get_big.sh && ./profile-data/get_big.sh\n");
+		goto cleanup;
+	}
 
-		if (!big1_json || !big2_json) {
-			printf("Could not parse JSON for big test\n");
-			goto cleanup;
-		}
+	big1_json = cJSON_Parse(big1_content);
+	big2_json = cJSON_Parse(big2_content);
+
+	if (!big1_json || !big2_json) {
+		printf("Could not parse JSON for big test\n");
+		goto cleanup;
 	}
 
 
