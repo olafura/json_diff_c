@@ -47,7 +47,7 @@ profile_exe = executable('test_profile',
 
 # Add a custom target for running profile tests
 run_target('profile',
-  command : ['sh', '-c', 'cd ' + meson.project_source_root() + ' && mkdir -p profile-data && if [ -f profile-data/get_medium.sh ]; then chmod +x profile-data/get_medium.sh && ./profile-data/get_medium.sh; fi && if [ -f profile-data/get_big.sh ]; then chmod +x profile-data/get_big.sh && ./profile-data/get_big.sh; fi && cd ' + meson.project_build_root() + ' && ' + profile_exe.full_path()]
+  command : [profile_exe]
 )
 
 # Fuzzing support (only if compiler supports it)

@@ -57,15 +57,15 @@ static double get_time_ms(void)
  */
 static void profile_medium(void)
 {
-	char *cdc_content = read_file("profile-data/cdc.json");
-	char *edg_content = read_file("profile-data/edg.json");
+	char *cdc_content = read_file("../profile-data/cdc.json");
+	char *edg_content = read_file("../profile-data/edg.json");
 	cJSON *cdc_json = NULL, *edg_json = NULL;
 	double start_time, end_time;
 	int i;
 
 	if (!cdc_content || !edg_content) {
 		printf("Could not read profile data files for medium test\n");
-		printf("Run: chmod +x profile-data/get_medium.sh && ./profile-data/get_medium.sh\n");
+		printf("Run: cd .. && chmod +x profile-data/get_medium.sh && ./profile-data/get_medium.sh\n");
 		goto cleanup;
 	}
 
@@ -106,14 +106,14 @@ cleanup:
  */
 static void profile_big(void)
 {
-	char *big1_content = read_file("profile-data/ModernAtomic.json");
-	char *big2_content = read_file("profile-data/LegacyAtomic.json");
+	char *big1_content = read_file("../profile-data/ModernAtomic.json");
+	char *big2_content = read_file("../profile-data/LegacyAtomic.json");
 	cJSON *big1_json = NULL, *big2_json = NULL;
 	double start_time, end_time;
 
 	if (!big1_content || !big2_content) {
 		printf("Could not read profile data files for big test\n");
-		printf("Run: chmod +x profile-data/get_big.sh && ./profile-data/get_big.sh\n");
+		printf("Run: cd .. && chmod +x profile-data/get_big.sh && ./profile-data/get_big.sh\n");
 		goto cleanup;
 	}
 
