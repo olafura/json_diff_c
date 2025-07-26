@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
+#include <errno.h>
 #include "json_diff.h"
 
 #define ARRAY_MARKER "_t"
