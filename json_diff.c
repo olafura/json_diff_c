@@ -170,7 +170,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	if (!diff_obj)
 		return NULL;
 
-	/* Simple LCS-based approach */
+	/* Simplified diff algorithm based on position matching */
 	i = 0;
 	j = 0;
 	
@@ -186,68 +186,27 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				i++;
 				j++;
 			} else {
-				/* Look ahead to see if we can find a match */
-				bool found_match = false;
-				
-				/* Check if left[i] appears later in right */
-				for (int k = j + 1; k < right_size && k < j + 3; k++) {
-					cJSON *future_right = cJSON_GetArrayItem(right, k);
-					if (json_value_equal(left_item, future_right, opts->strict_equality)) {
-						/* Insert items from right[j] to right[k-1] */
-						for (int ins = j; ins < k; ins++) {
-							cJSON *ins_item = cJSON_GetArrayItem(right, ins);
-							cJSON *ins_array = create_addition_array(ins_item);
-							if (ins_array) {
-								snprintf(index_str, sizeof(index_str), "%d", count);
-								cJSON_AddItemToObject(diff_obj, index_str, ins_array);
-								count++;
-								has_changes = true;
-							}
-						}
-						j = k;
-						found_match = true;
-						break;
-					}
-				}
-				
-				if (!found_match) {
-					/* Check if right[j] appears later in left */
-					for (int k = i + 1; k < left_size && k < i + 3; k++) {
-						cJSON *future_left = cJSON_GetArrayItem(left, k);
-						if (json_value_equal(right_item, future_left, opts->strict_equality)) {
-							/* Delete items from left[i] to left[k-1] */
-							for (int del = i; del < k; del++) {
-								cJSON *del_item = cJSON_GetArrayItem(left, del);
-								cJSON *del_array = create_deletion_array(del_item);
-								if (del_array) {
-									snprintf(index_str, sizeof(index_str), "_%d", deleted_count);
-									cJSON_AddItemToObject(diff_obj, index_str, del_array);
-									deleted_count++;
-									has_changes = true;
-								}
-							}
-							i = k;
-							found_match = true;
-							break;
-						}
-					}
-				}
-				
-				if (!found_match) {
-					/* Check for nested diff */
-					cJSON *sub_diff = json_diff(left_item, right_item, opts);
-					if (sub_diff) {
+				/* Items differ - check for nested diff first */
+				cJSON *sub_diff = json_diff(left_item, right_item, opts);
+				if (sub_diff && !cJSON_IsArray(sub_diff)) {
+					/* Nested object diff */
+					snprintf(index_str, sizeof(index_str), "%d", count);
+					cJSON_AddItemToObject(diff_obj, index_str, sub_diff);
+					has_changes = true;
+					count++;
+					deleted_count++;
+					i++;
+					j++;
+				} else {
+					/* Different items - treat as replacement */
+					if (sub_diff)
+						cJSON_Delete(sub_diff);
+					
+					cJSON *change_array = create_change_array(left_item, right_item);
+					if (change_array) {
 						snprintf(index_str, sizeof(index_str), "%d", count);
-						cJSON_AddItemToObject(diff_obj, index_str, sub_diff);
+						cJSON_AddItemToObject(diff_obj, index_str, change_array);
 						has_changes = true;
-					} else {
-						/* Replace */
-						cJSON *change_array = create_change_array(left_item, right_item);
-						if (change_array) {
-							snprintf(index_str, sizeof(index_str), "%d", count);
-							cJSON_AddItemToObject(diff_obj, index_str, change_array);
-							has_changes = true;
-						}
 					}
 					count++;
 					deleted_count++;

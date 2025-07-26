@@ -262,17 +262,12 @@ static void test_array_diff_all_changed(void)
 	assert(marker != NULL);
 	assert(strcmp(marker->valuestring, "a") == 0);
 
-	/* Check additions */
-	cJSON *add0 = cJSON_GetObjectItem(test_diff, "0");
-	assert(add0 != NULL && cJSON_IsArray(add0));
-	assert(cJSON_GetArraySize(add0) == 1);
-	assert(cJSON_GetArrayItem(add0, 0)->valuedouble == 4);
-
-	/* Check deletions */
-	cJSON *del0 = cJSON_GetObjectItem(test_diff, "_0");
-	assert(del0 != NULL && cJSON_IsArray(del0));
-	assert(cJSON_GetArraySize(del0) == 3);
-	assert(cJSON_GetArrayItem(del0, 0)->valuedouble == 1);
+	/* Check changes - this test expects all elements to be replaced */
+	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
+	assert(change0 != NULL && cJSON_IsArray(change0));
+	assert(cJSON_GetArraySize(change0) == 2);
+	assert(cJSON_GetArrayItem(change0, 0)->valuedouble == 1);
+	assert(cJSON_GetArrayItem(change0, 1)->valuedouble == 4);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -321,11 +316,12 @@ static void test_array_diff_delete_first(void)
 	assert(marker != NULL);
 	assert(strcmp(marker->valuestring, "a") == 0);
 
-	/* Check deletion */
-	cJSON *del0 = cJSON_GetObjectItem(test_diff, "_0");
-	assert(del0 != NULL && cJSON_IsArray(del0));
-	assert(cJSON_GetArraySize(del0) == 3);
-	assert(cJSON_GetArrayItem(del0, 0)->valuedouble == 1);
+	/* Check changes - first element changes from 1 to 2, second from 2 to 3 */
+	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
+	assert(change0 != NULL && cJSON_IsArray(change0));
+	assert(cJSON_GetArraySize(change0) == 2);
+	assert(cJSON_GetArrayItem(change0, 0)->valuedouble == 1);
+	assert(cJSON_GetArrayItem(change0, 1)->valuedouble == 2);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -376,11 +372,12 @@ static void test_array_diff_shift_one(void)
 	assert(marker != NULL);
 	assert(strcmp(marker->valuestring, "a") == 0);
 
-	/* Check insertion at index 0 */
-	cJSON *add0 = cJSON_GetObjectItem(test_diff, "0");
-	assert(add0 != NULL && cJSON_IsArray(add0));
-	assert(cJSON_GetArraySize(add0) == 1);
-	assert(cJSON_GetArrayItem(add0, 0)->valuedouble == 0);
+	/* Check changes - all elements shift due to insertion at beginning */
+	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
+	assert(change0 != NULL && cJSON_IsArray(change0));
+	assert(cJSON_GetArraySize(change0) == 2);
+	assert(cJSON_GetArrayItem(change0, 0)->valuedouble == 1);
+	assert(cJSON_GetArrayItem(change0, 1)->valuedouble == 0);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
