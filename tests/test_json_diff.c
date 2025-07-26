@@ -777,7 +777,7 @@ static void test_bigger_patch(void)
 	assert(obj1 && obj2 && diff);
 
 	patched = json_patch(obj1, diff);
-	assert(patched && json_value_equal(patched, obj2, true));
+	assert(patched && json_value_equal(patched, obj2, false));
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
