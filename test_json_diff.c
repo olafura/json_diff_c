@@ -30,8 +30,8 @@ static void test_basic_diff(void)
 	assert(test_diff != NULL);
 	assert(cJSON_IsArray(test_diff));
 	assert(cJSON_GetArraySize(test_diff) == 2);
-	assert(cJSON_GetArrayItem(test_diff, 0)->valuedouble == 1);
-	assert(cJSON_GetArrayItem(test_diff, 1)->valuedouble == 2);
+	assert(fabs(cJSON_GetArrayItem(test_diff, 0)->valuedouble - 1.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(test_diff, 1)->valuedouble - 2.0) < 1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -266,8 +266,8 @@ static void test_array_diff_all_changed(void)
 	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
 	assert(change0 != NULL && cJSON_IsArray(change0));
 	assert(cJSON_GetArraySize(change0) == 2);
-	assert(cJSON_GetArrayItem(change0, 0)->valuedouble == 1);
-	assert(cJSON_GetArrayItem(change0, 1)->valuedouble == 4);
+	assert(fabs(cJSON_GetArrayItem(change0, 0)->valuedouble - 1.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(change0, 1)->valuedouble - 4.0) < 1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -320,8 +320,8 @@ static void test_array_diff_delete_first(void)
 	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
 	assert(change0 != NULL && cJSON_IsArray(change0));
 	assert(cJSON_GetArraySize(change0) == 2);
-	assert(cJSON_GetArrayItem(change0, 0)->valuedouble == 1);
-	assert(cJSON_GetArrayItem(change0, 1)->valuedouble == 2);
+	assert(fabs(cJSON_GetArrayItem(change0, 0)->valuedouble - 1.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(change0, 1)->valuedouble - 2.0) < 1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -376,8 +376,8 @@ static void test_array_diff_shift_one(void)
 	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
 	assert(change0 != NULL && cJSON_IsArray(change0));
 	assert(cJSON_GetArraySize(change0) == 2);
-	assert(cJSON_GetArrayItem(change0, 0)->valuedouble == 1);
-	assert(cJSON_GetArrayItem(change0, 1)->valuedouble == 0);
+	assert(fabs(cJSON_GetArrayItem(change0, 0)->valuedouble - 1.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(change0, 1)->valuedouble - 0.0) < 1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -435,8 +435,8 @@ static void test_object_in_array_diff(void)
 	cJSON *inner_diff = cJSON_GetObjectItem(change0, "1");
 	assert(inner_diff != NULL && cJSON_IsArray(inner_diff));
 	assert(cJSON_GetArraySize(inner_diff) == 2);
-	assert(cJSON_GetArrayItem(inner_diff, 0)->valuedouble == 1);
-	assert(cJSON_GetArrayItem(inner_diff, 1)->valuedouble == 2);
+	assert(fabs(cJSON_GetArrayItem(inner_diff, 0)->valuedouble - 1.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(inner_diff, 1)->valuedouble - 2.0) < 1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -481,7 +481,7 @@ static void test_deleted_key_patch(void)
 	/* Verify result */
 	cJSON *bar_val = cJSON_GetObjectItem(patched, "bar");
 	assert(bar_val != NULL);
-	assert(bar_val->valuedouble == 3);
+	assert(fabs(bar_val->valuedouble - 3.0) < 1e-9);
 
 	/* Verify foo is deleted */
 	cJSON *foo_val = cJSON_GetObjectItem(patched, "foo");
