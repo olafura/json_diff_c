@@ -50,6 +50,17 @@ run_target('profile',
   command : [profile_exe]
 )
 
+# Medium diff benchmark (isolated timing of json_diff)
+bench_medium_exe = executable('bench_medium',
+  'tests/bench_medium.c',
+  link_with : json_diff_lib,
+  dependencies : [cjson_dep, math_dep],
+  install : false
+)
+run_target('bench-medium',
+  command : [bench_medium_exe]
+)
+
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')
 if cc.has_argument('-fsanitize=fuzzer')

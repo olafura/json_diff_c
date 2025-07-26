@@ -1,2 +1,12 @@
 profile-data/*.json
 corpus/*.json
+
+# ignore Meson build remnants under tests/
+/tests/build.ninja
+/tests/compile_commands.json
+/tests/libjsondiff.a.p
+/tests/test_json_diff.p
+/tests/test_profile.p
+/tests/meson-info/
+/tests/meson-logs/
+/tests/meson-private/

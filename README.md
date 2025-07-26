@@ -187,6 +187,18 @@ meson compile -C builddir profile
 # - profile-data/LegacyAtomic.json
 ```
 
+### Medium diff micro‑benchmark
+
+To isolate just the JSON diff performance for the medium dataset, run:
+```bash
+# via Meson
+meson compile -C builddir bench-medium
+
+# via Makefile (after make)
+make bench
+```
+This performs 5 warm‑up iterations then 50 timed calls to json_diff, printing the total and per‑iteration latency.
+
 The profile tests measure:
 - Medium-sized JSON diff performance (50 iterations)
 - Large JSON diff performance (single iteration)

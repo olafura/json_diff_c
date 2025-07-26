@@ -6,16 +6,18 @@ LDFLAGS = -lm -lcjson
 
 SOURCES = src/json_diff.c
 HEADERS = src/json_diff.h
-TEST_SOURCES = tests/test_json_diff.c
+TEST_SOURCES  = tests/test_json_diff.c
+BENCH_SOURCES = tests/bench_medium.c
 OBJECTS = $(SOURCES:.c=.o)
 TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
 
-TARGET = libjsondiff.a
-TEST_TARGET = test_json_diff
+TARGET       = libjsondiff.a
+TEST_TARGET  = test_json_diff
+BENCH_TARGET = bench_medium
 
-.PHONY: all clean test meson-setup meson-compile meson-test meson-profile meson-clean
+.PHONY: all clean test bench meson-setup meson-compile meson-test meson-profile meson-clean
 
-all: $(TARGET) $(TEST_TARGET)
+all: $(TARGET) $(TEST_TARGET) $(BENCH_TARGET)
 
 # Meson build system targets
 meson-setup:
@@ -42,11 +44,17 @@ $(TARGET): $(OBJECTS)
 $(TEST_TARGET): $(TEST_OBJECTS) $(OBJECTS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+$(BENCH_TARGET): $(BENCH_SOURCES:.c=.o) $(OBJECTS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -Isrc -c $< -o $@
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
+
+bench: $(BENCH_TARGET)
+	./$(BENCH_TARGET)
 
 clean:
 	rm -f $(OBJECTS) $(TEST_OBJECTS) $(TARGET) $(TEST_TARGET)
