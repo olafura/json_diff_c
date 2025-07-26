@@ -47,7 +47,7 @@ profile_exe = executable('test_profile',
 
 # Add a custom target for running profile tests
 run_target('profile',
-  command : ['sh', '-c', 'chmod +x profile-data/get_medium.sh profile-data/get_big.sh && ./profile-data/get_medium.sh && ./profile-data/get_big.sh && ' + profile_exe.full_path()]
+  command : ['sh', '-c', 'mkdir -p profile-data && if [ -f profile-data/get_medium.sh ]; then chmod +x profile-data/get_medium.sh && ./profile-data/get_medium.sh; fi && if [ -f profile-data/get_big.sh ]; then chmod +x profile-data/get_big.sh && ./profile-data/get_big.sh; fi && ' + profile_exe.full_path()]
 )
 
 # Fuzzing support (only if compiler supports it)
