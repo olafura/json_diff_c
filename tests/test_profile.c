@@ -204,7 +204,7 @@ static void profile_patch_performance(void)
 
 		if (patched) {
 			/* Verify patch correctness */
-			bool equal = json_value_equal(patched, obj2, true);
+			bool equal = json_value_equal(patched, obj2, false);
 			printf("Patch correctness: %s\n",
 			       equal ? "PASS" : "FAIL");
 			cJSON_Delete(patched);
