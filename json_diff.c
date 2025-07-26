@@ -176,23 +176,29 @@ static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
 
 		if (left_item && right_item) {
 			if (!json_value_equal(left_item, right_item, opts->strict_equality)) {
-				cJSON *change_array = create_change_array(left_item, right_item);
-				snprintf(index_str, sizeof(index_str), "%d", i);
-				cJSON_AddItemToObject(diff_obj, index_str, change_array);
-				has_changes = true;
+				cJSON *sub_diff = json_diff(left_item, right_item, opts);
+				if (sub_diff) {
+					snprintf(index_str, sizeof(index_str), "%d", i);
+					cJSON_AddItemToObject(diff_obj, index_str, sub_diff);
+					has_changes = true;
+				}
 			}
 		} else if (left_item) {
 			/* Deletion */
 			cJSON *del_array = create_deletion_array(left_item);
-			snprintf(index_str, sizeof(index_str), "_%d", i);
-			cJSON_AddItemToObject(diff_obj, index_str, del_array);
-			has_changes = true;
+			if (del_array) {
+				snprintf(index_str, sizeof(index_str), "_%d", i);
+				cJSON_AddItemToObject(diff_obj, index_str, del_array);
+				has_changes = true;
+			}
 		} else if (right_item) {
 			/* Insertion */
 			cJSON *ins_array = create_addition_array(right_item);
-			snprintf(index_str, sizeof(index_str), "%d", i);
-			cJSON_AddItemToObject(diff_obj, index_str, ins_array);
-			has_changes = true;
+			if (ins_array) {
+				snprintf(index_str, sizeof(index_str), "%d", i);
+				cJSON_AddItemToObject(diff_obj, index_str, ins_array);
+				has_changes = true;
+			}
 		}
 	}
 
@@ -285,6 +291,90 @@ cJSON *json_diff(const cJSON *left, const cJSON *right,
 }
 
 /**
+ * patch_array - Apply array diff to an array
+ * @original: original array
+ * @diff: array diff object
+ *
+ * Return: patched array or NULL on failure
+ */
+static cJSON *patch_array(const cJSON *original, const cJSON *diff)
+{
+	cJSON *result = cJSON_CreateArray();
+	cJSON *orig_item;
+	int orig_size = cJSON_GetArraySize(original);
+	int i;
+
+	if (!result)
+		return NULL;
+
+	/* Copy original array */
+	for (i = 0; i < orig_size; i++) {
+		orig_item = cJSON_GetArrayItem(original, i);
+		if (orig_item) {
+			cJSON *copy = cJSON_Duplicate(orig_item, 1);
+			if (copy)
+				cJSON_AddItemToArray(result, copy);
+		}
+	}
+
+	/* Apply changes from diff */
+	cJSON *diff_item = diff->child;
+	while (diff_item) {
+		const char *key = diff_item->string;
+
+		if (strcmp(key, ARRAY_MARKER) == 0) {
+			diff_item = diff_item->next;
+			continue; /* Skip array marker */
+		}
+
+		if (key[0] == '_') {
+			/* Deletion - key format is "_index" */
+			int index = atoi(key + 1);
+			if (index >= 0 && index < cJSON_GetArraySize(result)) {
+				cJSON_DeleteItemFromArray(result, index);
+			}
+		} else {
+			/* Addition or modification - key is index */
+			int index = atoi(key);
+			if (cJSON_IsArray(diff_item)) {
+				int array_size = cJSON_GetArraySize(diff_item);
+				if (array_size == 1) {
+					/* Addition */
+					cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
+					if (new_val) {
+						if (index >= cJSON_GetArraySize(result)) {
+							cJSON_AddItemToArray(result, new_val);
+						} else {
+							cJSON_InsertItemInArray(result, index, new_val);
+						}
+					}
+				} else if (array_size == 2) {
+					/* Replacement */
+					cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
+					if (new_val && index < cJSON_GetArraySize(result)) {
+						cJSON_ReplaceItemInArray(result, index, new_val);
+					}
+				}
+			} else {
+				/* Nested diff */
+				if (index < cJSON_GetArraySize(result)) {
+					cJSON *orig_val = cJSON_GetArrayItem(result, index);
+					if (orig_val) {
+						cJSON *patched = json_patch(orig_val, diff_item);
+						if (patched) {
+							cJSON_ReplaceItemInArray(result, index, patched);
+						}
+					}
+				}
+			}
+		}
+		diff_item = diff_item->next;
+	}
+
+	return result;
+}
+
+/**
  * json_patch - Apply a diff to a cJSON value
  * @original: original JSON value
  * @diff: diff to apply
@@ -303,7 +393,19 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 		return cJSON_Duplicate(cJSON_GetArrayItem(diff, 1), 1);
 	}
 
-	if (!cJSON_IsObject(original) || !cJSON_IsObject(diff))
+	if (!cJSON_IsObject(diff))
+		return cJSON_Duplicate(original, 1);
+
+	/* Check if this is an array diff */
+	if (cJSON_GetObjectItem(diff, ARRAY_MARKER)) {
+		if (cJSON_IsArray(original)) {
+			return patch_array(original, diff);
+		} else {
+			return cJSON_Duplicate(original, 1);
+		}
+	}
+
+	if (!cJSON_IsObject(original))
 		return cJSON_Duplicate(original, 1);
 
 	result = cJSON_Duplicate(original, 1);
@@ -315,26 +417,25 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 	while (diff_item) {
 		const char *key = diff_item->string;
 
-		if (strcmp(key, ARRAY_MARKER) == 0) {
-			diff_item = diff_item->next;
-			continue; /* Skip array marker */
-		}
-
 		if (cJSON_IsArray(diff_item)) {
 			int array_size = cJSON_GetArraySize(diff_item);
 			if (array_size == 1) {
 				/* Addition */
 				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
-				cJSON_DeleteItemFromObject(result, key);
-				cJSON_AddItemToObject(result, key, new_val);
+				if (new_val) {
+					cJSON_DeleteItemFromObject(result, key);
+					cJSON_AddItemToObject(result, key, new_val);
+				}
 			} else if (array_size == 3) {
 				/* Deletion - remove key */
 				cJSON_DeleteItemFromObject(result, key);
 			} else if (array_size == 2) {
 				/* Replacement */
 				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
-				cJSON_DeleteItemFromObject(result, key);
-				cJSON_AddItemToObject(result, key, new_val);
+				if (new_val) {
+					cJSON_DeleteItemFromObject(result, key);
+					cJSON_AddItemToObject(result, key, new_val);
+				}
 			}
 		} else {
 			/* Nested diff */
