@@ -2,11 +2,7 @@
 #ifndef JSON_DIFF_H
 #define JSON_DIFF_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <cjson/cJSON.h>
 
 /**
@@ -17,17 +13,71 @@ struct json_diff_options {
 	bool strict_equality;
 };
 
-/* Function prototypes */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Core API functions */
+
+/**
+ * json_diff - Create a diff between two cJSON values
+ * @left: first JSON value (must not be NULL)
+ * @right: second JSON value (must not be NULL)
+ * @opts: diff options (can be NULL for defaults)
+ *
+ * Return: diff object or NULL if values are equal
+ */
 cJSON *json_diff(const cJSON *left, const cJSON *right,
 		 const struct json_diff_options *opts);
 
+/**
+ * json_patch - Apply a diff to a cJSON value
+ * @original: original JSON value (must not be NULL)
+ * @diff: diff to apply (must not be NULL)
+ *
+ * Return: patched JSON value or NULL on failure
+ */
 cJSON *json_patch(const cJSON *original, const cJSON *diff);
 
+/**
+ * json_value_equal - Compare two cJSON values for equality
+ * @left: first value (can be NULL)
+ * @right: second value (can be NULL)
+ * @strict: use strict equality for numbers
+ *
+ * Return: true if equal, false otherwise
+ */
 bool json_value_equal(const cJSON *left, const cJSON *right, bool strict);
 
 /* Utility functions for creating diff/patch structures */
+
+/**
+ * create_change_array - Create a change array [old_value, new_value]
+ * @old_val: old value (must not be NULL)
+ * @new_val: new value (must not be NULL)
+ *
+ * Return: cJSON array or NULL on failure
+ */
 cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val);
+
+/**
+ * create_addition_array - Create an addition array [new_value]
+ * @new_val: new value (must not be NULL)
+ *
+ * Return: cJSON array or NULL on failure
+ */
 cJSON *create_addition_array(const cJSON *new_val);
+
+/**
+ * create_deletion_array - Create a deletion array [old_value, 0, 0]
+ * @old_val: old value (must not be NULL)
+ *
+ * Return: cJSON array or NULL on failure
+ */
 cJSON *create_deletion_array(const cJSON *old_val);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* JSON_DIFF_H */
