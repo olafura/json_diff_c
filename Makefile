@@ -47,12 +47,12 @@ fuzz-custom: build
 	meson run fuzz-custom -C $(BUILD_DIR)
 
 tidy:
-	rg -l --glob '*.c' --glob '*.h' --null . \
-		| xargs -0 clang-tidy
+	rg -l --glob '*.c' --glob '*.h' --null src \
+		| xargs -0 clang-tidy -p $(BUILD_DIR)
 
 tidy-fix:
-	rg -l --glob '*.c' --glob '*.h' --null . \
-		| xargs -0 clang-tidy --format
+	rg -l --glob '*.c' --glob '*.h' --null src \
+		| xargs -0 clang-tidy --format -p $(BUILD_DIR)
 
 format:
 	rg -l --glob '*.c' --glob '*.h' --null . \

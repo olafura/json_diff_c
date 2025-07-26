@@ -16,13 +16,20 @@ static char *read_file(const char *filename)
 		return NULL;
 	}
 	long len = ftell(f);
-	rewind(f);
-	char *buf = malloc(len + 1);
+	if (len < 0) {
+		fclose(f);
+		return NULL;
+	}
+	if (fseek(f, 0, SEEK_SET) != 0) {
+		fclose(f);
+		return NULL;
+	}
+	char *buf = malloc((size_t)len + 1);
 	if (!buf) {
 		fclose(f);
 		return NULL;
 	}
-	size_t n = fread(buf, 1, len, f);
+	size_t n = fread(buf, 1, (size_t)len, f);
 	buf[n] = '\0';
 	fclose(f);
 	return buf;
@@ -51,15 +58,16 @@ int main(void)
 		left_buf = right_buf = NULL;
 	}
 	if (!left_buf || !right_buf) {
-		fprintf(stderr, "Failed to load input files in profile-data/ "
-		                "or ../profile-data/\n");
+		fputs("Failed to load input files in profile-data/ or "
+		      "../profile-data/\n",
+		      stderr);
 		return 1;
 	}
 
 	cJSON *left = cJSON_Parse(left_buf);
 	cJSON *right = cJSON_Parse(right_buf);
 	if (!left || !right) {
-		fprintf(stderr, "Failed to parse JSON inputs\n");
+		fputs("Failed to parse JSON inputs\n", stderr);
 		free(left_buf);
 		free(right_buf);
 		return 1;

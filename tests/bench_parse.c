@@ -18,17 +18,26 @@ static char *read_file(const char *path)
 	FILE *f = fopen(path, "r");
 	if (!f)
 		return NULL;
-	fseek(f, 0, SEEK_END);
+	if (fseek(f, 0, SEEK_END) != 0) {
+		fclose(f);
+		return NULL;
+	}
 	long len = ftell(f);
-	rewind(f);
-	char *buf = malloc(len + 1);
+	if (len < 0) {
+		fclose(f);
+		return NULL;
+	}
+	if (fseek(f, 0, SEEK_SET) != 0) {
+		fclose(f);
+		return NULL;
+	}
+	char *buf = malloc((size_t)len + 1);
 	if (!buf) {
 		fclose(f);
 		return NULL;
 	}
-	size_t _n = fread(buf, 1, len, f);
-	(void)_n;
-	buf[len] = '\0';
+	size_t n = fread(buf, 1, (size_t)len, f);
+	buf[n] = '\0';
 	fclose(f);
 	return buf;
 }
@@ -41,7 +50,12 @@ int main(void)
 	for (int i = 0; i < 2; i++) {
 		bufs[i] = read_file(paths[i]);
 		if (!bufs[i]) {
-			fprintf(stderr, "Failed to read '%s'\n", paths[i]);
+			fputs("Failed to read '", stderr);
+			fputs(paths[i], stderr);
+			fputs("'\n", stderr);
+			for (int j = 0; j < i; j++) {
+				free(bufs[j]);
+			}
 			return 1;
 		}
 	}

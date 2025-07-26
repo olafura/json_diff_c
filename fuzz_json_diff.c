@@ -1,9 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "src/json_diff.h"
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef rsize_t
+typedef size_t rsize_t;
+#endif
+
+#ifndef errno_t
+typedef int errno_t;
+#endif
+
+/* Declare memcpy_s as per C11 Annex K safe function */
+errno_t memcpy_s(void *restrict dest, rsize_t destmax, const void *restrict src,
+                 rsize_t n);
 
 /**
  * LLVMFuzzerTestOneInput - Fuzzer entry point for json_diff
@@ -39,10 +53,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	if (!json1_str || !json2_str)
 		goto cleanup;
 
-	memcpy(json1_str, data, split_point);
+	if (memcpy_s(json1_str, split_point + 1, data, split_point) != 0) {
+		goto cleanup;
+	}
 	json1_str[split_point] = '\0';
 
-	memcpy(json2_str, data + split_point, size - split_point);
+	if (memcpy_s(json2_str, size - split_point + 1, data + split_point,
+	             size - split_point) != 0) {
+		goto cleanup;
+	}
 	json2_str[size - split_point] = '\0';
 
 	/* Parse JSON strings */

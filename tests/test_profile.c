@@ -23,17 +23,27 @@ static char *read_file(const char *filename)
 		return NULL;
 	}
 
-	fseek(file, 0, SEEK_END);
+	if (fseek(file, 0, SEEK_END) != 0) {
+		fclose(file);
+		return NULL;
+	}
 	length = ftell(file);
-	fseek(file, 0, SEEK_SET);
+	if (length < 0) {
+		fclose(file);
+		return NULL;
+	}
+	if (fseek(file, 0, SEEK_SET) != 0) {
+		fclose(file);
+		return NULL;
+	}
 
-	content = malloc(length + 1);
+	content = malloc((size_t)length + 1);
 	if (!content) {
 		fclose(file);
 		return NULL;
 	}
 
-	size_t bytes_read = fread(content, 1, length, file);
+	size_t bytes_read = fread(content, 1, (size_t)length, file);
 	content[bytes_read] = '\0';
 	fclose(file);
 
