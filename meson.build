@@ -97,57 +97,6 @@ if cc.has_argument('-fsanitize=fuzzer')
   )
 endif
 
-# Clang-tidy support
-clang_tidy = find_program('clang-tidy', required : false)
-if clang_tidy.found()
-  # Add clang-tidy target
-  run_target('clang-tidy',
-    command : [
-      clang_tidy,
-      '-p', meson.current_build_dir(),
-      '--config-file=' + join_paths(meson.current_source_dir(), '.clang-tidy'),
-      'src/json_diff.c',
-      'tests/test_json_diff.c',
-      'tests/test_profile.c',
-      'fuzz_json_diff.c'
-    ],
-    depends : [json_diff_lib, test_exe, profile_exe]
-  )
-  
-  # Add clang-tidy fix target
-  run_target('clang-tidy-fix',
-    command : [
-      clang_tidy,
-      '-p', meson.current_build_dir(),
-      '--config-file=' + join_paths(meson.current_source_dir(), '.clang-tidy'),
-      '--fix',
-      'src/json_diff.c',
-      'tests/test_json_diff.c',
-      'tests/test_profile.c',
-      'fuzz_json_diff.c'
-    ],
-    depends : [json_diff_lib, test_exe, profile_exe]
-  )
-endif
-
-# Static analysis target
-run_target('analyze',
-  command : [
-    'sh', '-c',
-    'if command -v clang-tidy >/dev/null 2>&1; then ' +
-    'echo "Running clang-tidy..."; ' +
-    'meson compile -C ' + meson.current_build_dir() + ' clang-tidy; ' +
-    'fi; ' +
-    'if command -v cppcheck >/dev/null 2>&1; then ' +
-    'echo "Running cppcheck..."; ' +
-    'cppcheck --enable=all --std=c11 --platform=unix64 ' +
-    '--suppress=missingIncludeSystem --suppress=unusedFunction ' +
-    '--suppress=unmatchedSuppression --inline-suppr ' +
-    'src/ .; ' +
-    'fi'
-  ]
-)
-
 # Declare dependency for other projects
 json_diff_dep = declare_dependency(
   link_with : json_diff_lib,

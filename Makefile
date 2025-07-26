@@ -3,7 +3,7 @@
 BUILD_DIR := builddir
 
 .PHONY: all setup build test bench bench-medium bench-pipeline bench-parse bench-jsmn profile \
-        install clean fuzz fuzz-long fuzz-custom clang-tidy clang-tidy-fix analyze format format-check
+        install clean fuzz fuzz-long fuzz-custom tidy tidy-fix format format-check
 
 all: build
 
@@ -46,14 +46,13 @@ fuzz-long: build
 fuzz-custom: build
 	meson run fuzz-custom -C $(BUILD_DIR)
 
-clang-tidy: build
-	meson run clang-tidy -C $(BUILD_DIR)
+tidy:
+	rg -l --glob '*.c' --glob '*.h' --null . \
+		| xargs -0 clang-tidy
 
-clang-tidy-fix: build
-	meson run clang-tidy-fix -C $(BUILD_DIR)
-
-analyze: build
-	meson run analyze -C $(BUILD_DIR)
+tidy-fix:
+	rg -l --glob '*.c' --glob '*.h' --null . \
+		| xargs -0 clang-tidy --format
 
 format:
 	rg -l --glob '*.c' --glob '*.h' --null . \
