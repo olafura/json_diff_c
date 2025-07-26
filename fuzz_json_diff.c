@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <stdint.h>
+#include "src/json_diff.h"
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "src/json_diff.h"
 
 /**
  * LLVMFuzzerTestOneInput - Fuzzer entry point for json_diff
@@ -35,13 +35,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	/* Create null-terminated strings for JSON parsing */
 	json1_str = malloc(split_point + 1);
 	json2_str = malloc(size - split_point + 1);
-	
+
 	if (!json1_str || !json2_str)
 		goto cleanup;
 
 	memcpy(json1_str, data, split_point);
 	json1_str[split_point] = '\0';
-	
+
 	memcpy(json2_str, data + split_point, size - split_point);
 	json2_str[size - split_point] = '\0';
 
@@ -54,8 +54,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		goto cleanup;
 
 	/* Test diff function with different options */
-	struct json_diff_options opts_strict = { .strict_equality = true };
-	struct json_diff_options opts_loose = { .strict_equality = false };
+	struct json_diff_options opts_strict = {.strict_equality = true};
+	struct json_diff_options opts_loose = {.strict_equality = false};
 
 	diff = json_diff(json1, json2, &opts_strict);
 	if (diff) {

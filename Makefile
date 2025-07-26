@@ -1,93 +1,64 @@
 # SPDX-License-Identifier: Apache-2.0
 
-CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra -Werror -O2 -g -I.
-LDFLAGS = -lm -lcjson
+BUILD_DIR := builddir
 
-SOURCES = src/json_diff.c
-HEADERS = src/json_diff.h
-TEST_SOURCES  = tests/test_json_diff.c
-BENCH_SOURCES = tests/bench_medium.c
-OBJECTS = $(SOURCES:.c=.o)
-TEST_OBJECTS = $(TEST_SOURCES:.c=.o)
+.PHONY: all setup build test bench bench-medium bench-pipeline bench-parse bench-jsmn profile \
+        install clean fuzz fuzz-long fuzz-custom clang-tidy clang-tidy-fix analyze format format-check
 
-TARGET       = libjsondiff.a
-TEST_TARGET  = test_json_diff
-BENCH_TARGET = bench_medium
+all: build
 
-.PHONY: all clean test bench bench-parse meson-setup meson-compile meson-test meson-profile meson-clean
+setup:
+	meson setup $(BUILD_DIR)
 
-all: $(TARGET) $(TEST_TARGET) $(BENCH_TARGET)
+build: setup
+	meson compile -C $(BUILD_DIR)
 
-# Meson build system targets
-meson-setup:
-	meson setup builddir
+test: build
+	meson test -C $(BUILD_DIR)
 
-meson-compile: meson-setup
-	meson compile -C builddir
+bench: bench-medium
 
-meson-test: meson-compile
-	meson test -C builddir
+bench-medium: build
+	meson run bench-medium -C $(BUILD_DIR)
 
-meson-profile: meson-compile
-	meson compile -C builddir profile
+bench-pipeline: build
+	meson run bench-pipeline -C $(BUILD_DIR)
 
-meson-clean:
-	rm -rf builddir
+bench-parse: build
+	meson compile -C $(BUILD_DIR) bench_parse
+	$(BUILD_DIR)/bench_parse
 
-meson-install: meson-compile
-	meson install -C builddir
+profile: build
+	meson run profile -C $(BUILD_DIR)
 
-$(TARGET): $(OBJECTS)
-	ar rcs $@ $^
-
-$(TEST_TARGET): $(TEST_OBJECTS) $(OBJECTS)
-	$(CC) -o $@ $^ $(LDFLAGS)
-
-$(BENCH_TARGET): $(BENCH_SOURCES:.c=.o) $(OBJECTS)
-	$(CC) -o $@ $^ $(LDFLAGS)
-
-%.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -Isrc -c $< -o $@
-
-test: $(TEST_TARGET)
-	./$(TEST_TARGET)
-
-bench: $(BENCH_TARGET)
-	./$(BENCH_TARGET)
-
-tests/bench_parse.o: tests/bench_parse.c $(HEADERS)
-	$(CC) $(CFLAGS) -Isrc -c $< -o $@
-
-bench-parse: tests/bench_parse.o $(OBJECTS)
-	$(CC) -o bench_parse tests/bench_parse.o $(OBJECTS) $(LDFLAGS)
-	./bench_parse
-
-tests/jsmn.o: tests/jsmn.c tests/jsmn.h
-	$(CC) $(CFLAGS) -c $< -o tests/jsmn.o
-
-tests/bench_jsmn.o: tests/bench_jsmn.c tests/jsmn.h
-	$(CC) $(CFLAGS) -Isrc -c $< -o tests/bench_jsmn.o
-
-bench-jsmn: tests/bench_jsmn.o tests/jsmn.o $(OBJECTS)
-	$(CC) -o bench_jsmn tests/bench_jsmn.o tests/jsmn.o $(OBJECTS) $(LDFLAGS)
-	./bench_jsmn
-
-tests/bench_pipeline.o: tests/bench_pipeline.c tests/jsmn.h src/json_diff.h src/parse_jsmn.h
-	$(CC) $(CFLAGS) -Isrc -c $< -o tests/bench_pipeline.o
-
-bench-pipeline: tests/bench_pipeline.o $(OBJECTS)
-	$(CC) -o bench_pipeline tests/bench_pipeline.o $(OBJECTS) $(LDFLAGS)
-	./bench_pipeline
+install: build
+	meson install -C $(BUILD_DIR)
 
 clean:
-	rm -f $(OBJECTS) $(TEST_OBJECTS) $(TARGET) $(TEST_TARGET)
-	rm -rf builddir
+	rm -rf $(BUILD_DIR)
 
-install: $(TARGET)
-	install -d /usr/local/include
-	install -d /usr/local/lib
-	install -m 644 $(HEADERS) /usr/local/include/
-	install -m 644 $(TARGET) /usr/local/lib/
+fuzz: build
+	meson run fuzz -C $(BUILD_DIR)
 
-.SUFFIXES: .c .o
+fuzz-long: build
+	meson run fuzz-long -C $(BUILD_DIR)
+
+fuzz-custom: build
+	meson run fuzz-custom -C $(BUILD_DIR)
+
+clang-tidy: build
+	meson run clang-tidy -C $(BUILD_DIR)
+
+clang-tidy-fix: build
+	meson run clang-tidy-fix -C $(BUILD_DIR)
+
+analyze: build
+	meson run analyze -C $(BUILD_DIR)
+
+format:
+	rg -l --glob '*.c' --glob '*.h' --null . \
+		| xargs -0 clang-format -i
+
+format-check:
+	rg -l --glob '*.c' --glob '*.h' --null . \
+		| xargs -0 clang-format --dry-run --Werror

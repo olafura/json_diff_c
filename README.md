@@ -209,28 +209,17 @@ meson compile -C builddir profile
 
 To isolate just the JSON diff performance for the medium dataset, run:
 ```bash
-# via Meson
 meson compile -C builddir bench-medium
-
-# via Makefile (after make)
-make bench
 ```
 
 ### Parser micro‑benchmark
 
-To measure raw JSON parsing cost for the medium dataset:
-```bash
-# via Makefile
-make bench-parse     # cJSON_Parse parsing
-make bench-jsmn      # jsmn_parse parsing
-```
-
-This performs 5 warm‑up iterations then 50 timed parses, printing the total and per‑iteration latency.
-
-# For Meson builds, compile the parser benchmarks:
+To measure raw JSON parsing cost for the medium dataset, run:
 ```bash
 meson compile -C builddir bench_parse bench_jsmn
 ```
+
+This performs 5 warm‑up iterations then 50 timed parses, printing the total and per‑iteration latency.
 
 The profile tests measure:
 - Medium-sized JSON diff performance (50 iterations)
@@ -266,6 +255,20 @@ meson compile -C builddir-fuzz fuzz-custom
 ```
 
 The fuzzer will automatically generate test cases and report any crashes or hangs.
+
+## Formatting
+
+We use clang-format to enforce the Linux Kernel coding style. To format all C sources and headers, run:
+
+```bash
+make format
+```
+
+To check formatting without modifying files, run:
+
+```bash
+make format-check
+```
 
 ## License
 

@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+#include "src/json_diff.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/time.h>
-#include "src/json_diff.h"
-#include "parse_jsmn.h"
-#include "jsmn.h"
-#include "src/parse_jsmn.h"
-#include "jsmn.h"
+#include <time.h>
 
 /**
  * read_file - Read entire file into a string
@@ -57,7 +53,8 @@ static double get_time_ms(void)
 }
 
 /**
- * profile_medium - Profile medium-sized JSON diff (equivalent to ProfileMedium.scala)
+ * profile_medium - Profile medium-sized JSON diff (equivalent to
+ * ProfileMedium.scala)
  */
 static void profile_medium(void)
 {
@@ -69,53 +66,41 @@ static void profile_medium(void)
 
 	if (!cdc_content || !edg_content) {
 		printf("Could not read profile data files for medium test\n");
-		printf("Run: cd .. && chmod +x profile-data/get_medium.sh && ./profile-data/get_medium.sh\n");
+		printf("Run: cd .. && chmod +x profile-data/get_medium.sh && "
+		       "./profile-data/get_medium.sh\n");
 		goto cleanup;
 	}
 
-    // Load & parse JSON via JSMN->cJSON (arena) for end-to-end parse+diff
-    char *left_json  = read_file("../profile-data/cdc.json");
-    char *right_json = read_file("../profile-data/edg.json");
-    if (!left_json || !right_json) {
-        printf("Could not read medium profile JSON files\n");
-        free(left_json);
-        free(right_json);
-        goto cleanup;
-    }
-
-    struct json_diff_arena arena;
-    json_diff_arena_init(&arena, 1 << 20);
-    struct json_diff_options opts = { .strict_equality = true, .arena = &arena };
-    // Warmup or initial parse can be done here if needed
-    free(left_json);
-    free(right_json);
+	cdc_json = cJSON_Parse(cdc_content);
+	edg_json = cJSON_Parse(edg_content);
 
 	if (!cdc_json || !edg_json) {
 		printf("Could not parse JSON for medium test\n");
 		goto cleanup;
 	}
 
+	printf("Running medium profile test (50 iterations)...\n");
+	start_time = get_time_ms();
 
-    printf("Running medium profile test (parse+diff; 50 iterations)...\n");
-    start_time = get_time_ms();
-
-    for (i = 0; i < 50; i++) {
-        cJSON *diff = json_diff_str(cdc_content, edg_content, &opts);
-        if (diff) cJSON_Delete(diff);
-    }
+	for (i = 0; i < 50; i++) {
+		cJSON *diff = json_diff(cdc_json, edg_json, NULL);
+		if (diff) {
+			cJSON_Delete(diff);
+		}
+	}
 
 	end_time = get_time_ms();
-	printf("Medium profile test completed in %.2f ms (avg: %.2f ms per diff)\n",
+	printf("Medium profile test completed in %.2f ms (avg: %.2f ms per "
+	       "diff)\n",
 	       end_time - start_time, (end_time - start_time) / 50.0);
 
 cleanup:
-		if (cdc_json)
-			cJSON_Delete(cdc_json);
-		if (edg_json)
-			cJSON_Delete(edg_json);
-		json_diff_arena_cleanup(&arena);
-		free(cdc_content);
-		free(edg_content);
+	if (cdc_json)
+		cJSON_Delete(cdc_json);
+	if (edg_json)
+		cJSON_Delete(edg_json);
+	free(cdc_content);
+	free(edg_content);
 }
 
 /**
@@ -130,22 +115,18 @@ static void profile_big(void)
 
 	if (!big1_content || !big2_content) {
 		printf("Could not read profile data files for big test\n");
-		printf("Run: cd .. && chmod +x profile-data/get_big.sh && ./profile-data/get_big.sh\n");
+		printf("Run: cd .. && chmod +x profile-data/get_big.sh && "
+		       "./profile-data/get_big.sh\n");
 		goto cleanup;
 	}
 
-		// Parse large JSON via JSMN->cJSON (arena) for end-to-end perf
-		struct json_diff_arena arena;
-		json_diff_arena_init(&arena, 1 << 20);
-		struct json_diff_options opts = { .strict_equality = true, .arena = &arena };
-		big1_json = cjson_parse_jsmn(big1_content, &opts);
-		big2_json = cjson_parse_jsmn(big2_content, &opts);
+	big1_json = cJSON_Parse(big1_content);
+	big2_json = cJSON_Parse(big2_content);
 
 	if (!big1_json || !big2_json) {
 		printf("Could not parse JSON for big test\n");
 		goto cleanup;
 	}
-
 
 	printf("Running big profile test (1 iteration)...\n");
 	start_time = get_time_ms();
@@ -153,7 +134,8 @@ static void profile_big(void)
 	cJSON *diff = json_diff(big1_json, big2_json, NULL);
 
 	end_time = get_time_ms();
-	printf("Big profile test completed in %.2f ms\n", end_time - start_time);
+	printf("Big profile test completed in %.2f ms\n",
+	       end_time - start_time);
 
 	if (diff) {
 		cJSON_Delete(diff);
@@ -162,11 +144,10 @@ static void profile_big(void)
 cleanup:
 	if (big1_json)
 		cJSON_Delete(big1_json);
-		if (big2_json)
-			cJSON_Delete(big2_json);
-		json_diff_arena_cleanup(&arena);
-		free(big1_content);
-		free(big2_content);
+	if (big2_json)
+		cJSON_Delete(big2_json);
+	free(big1_content);
+	free(big2_content);
 }
 
 /**
@@ -200,19 +181,22 @@ static void profile_patch_performance(void)
 	start_time = get_time_ms();
 	diff = json_diff(obj1, obj2, NULL);
 	end_time = get_time_ms();
-	printf("Large array diff completed in %.2f ms\n", end_time - start_time);
+	printf("Large array diff completed in %.2f ms\n",
+	       end_time - start_time);
 
 	if (diff) {
 		/* Test patch performance */
 		start_time = get_time_ms();
 		patched = json_patch(obj1, diff);
 		end_time = get_time_ms();
-		printf("Large array patch completed in %.2f ms\n", end_time - start_time);
+		printf("Large array patch completed in %.2f ms\n",
+		       end_time - start_time);
 
 		if (patched) {
 			/* Verify patch correctness */
 			bool equal = json_value_equal(patched, obj2, true);
-			printf("Patch correctness: %s\n", equal ? "PASS" : "FAIL");
+			printf("Patch correctness: %s\n",
+			       equal ? "PASS" : "FAIL");
 			cJSON_Delete(patched);
 		}
 		cJSON_Delete(diff);

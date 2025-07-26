@@ -9,18 +9,6 @@ project('json-diff', 'c',
     'optimization=2',
     'debug=true'
   ]
-# end of bench-jsmn target
-)
-
-# End-to-end parse+diff pipeline micro-benchmark
-bench_pipeline_exe = executable('bench_pipeline',
-  'tests/bench_pipeline.c',
-  link_with : json_diff_lib,
-  dependencies : [cjson_dep],
-  install : false
-)
-run_target('bench-pipeline',
-  command : [bench_pipeline_exe]
 )
 
 # Dependencies
@@ -29,7 +17,7 @@ math_dep = meson.get_compiler('c').find_library('m', required : false)
 
 # Library
 json_diff_lib = static_library('jsondiff',
-  'src/json_diff.c', 'src/parse_jsmn.c',
+  'src/json_diff.c',
   dependencies : [cjson_dep, math_dep],
   install : true,
   install_dir : get_option('libdir')
@@ -80,14 +68,6 @@ bench_parse_exe = executable('bench_parse',
   install : false
 )
 ## bench-parse run_target removed due to Meson introspect bug; run manually
-
-# JSMN parse benchmark (vs. cJSON)
-bench_jsmn_exe = executable('bench_jsmn',
-  'tests/bench_jsmn.c', 'src/jsmn.c',
-  install : false
-)
-## bench-jsmn run_target removed; run manually
-
 
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')

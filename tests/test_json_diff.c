@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+#include "src/json_diff.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include "src/json_diff.h"
 
 /**
  * test_basic_diff - Test basic JSON diffing functionality
@@ -32,8 +32,10 @@ static void test_basic_diff(void)
 	assert(test_diff != NULL);
 	assert(cJSON_IsArray(test_diff));
 	assert(cJSON_GetArraySize(test_diff) == 2);
-	assert(fabs(cJSON_GetArrayItem(test_diff, 0)->valuedouble - 1.0) < 1e-9);
-	assert(fabs(cJSON_GetArrayItem(test_diff, 1)->valuedouble - 2.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(test_diff, 0)->valuedouble - 1.0) <
+	       1e-9);
+	assert(fabs(cJSON_GetArrayItem(test_diff, 1)->valuedouble - 2.0) <
+	       1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -318,7 +320,8 @@ static void test_array_diff_delete_first(void)
 	assert(marker != NULL);
 	assert(strcmp(marker->valuestring, "a") == 0);
 
-	/* Check changes - first element changes from 1 to 2, second from 2 to 3 */
+	/* Check changes - first element changes from 1 to 2, second from 2 to 3
+	 */
 	cJSON *change0 = cJSON_GetObjectItem(test_diff, "0");
 	assert(change0 != NULL && cJSON_IsArray(change0));
 	assert(cJSON_GetArraySize(change0) == 2);
@@ -333,7 +336,8 @@ static void test_array_diff_delete_first(void)
 }
 
 /**
- * test_array_diff_shift_one - Test array diff with element inserted at beginning
+ * test_array_diff_shift_one - Test array diff with element inserted at
+ * beginning
  */
 static void test_array_diff_shift_one(void)
 {
@@ -437,8 +441,10 @@ static void test_object_in_array_diff(void)
 	cJSON *inner_diff = cJSON_GetObjectItem(change0, "1");
 	assert(inner_diff != NULL && cJSON_IsArray(inner_diff));
 	assert(cJSON_GetArraySize(inner_diff) == 2);
-	assert(fabs(cJSON_GetArrayItem(inner_diff, 0)->valuedouble - 1.0) < 1e-9);
-	assert(fabs(cJSON_GetArrayItem(inner_diff, 1)->valuedouble - 2.0) < 1e-9);
+	assert(fabs(cJSON_GetArrayItem(inner_diff, 0)->valuedouble - 1.0) <
+	       1e-9);
+	assert(fabs(cJSON_GetArrayItem(inner_diff, 1)->valuedouble - 2.0) <
+	       1e-9);
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);
@@ -574,9 +580,11 @@ static void test_array_patch_shift_inside(void)
 	/* Verify patched result */
 	cJSON *result_arr = cJSON_GetObjectItem(patched, "1");
 	assert(result_arr != NULL && cJSON_IsArray(result_arr));
-	
-	/* Note: This is a complex case that might not work perfectly with simple diff algorithm */
-	/* The test verifies the patch function works, even if result differs from expected */
+
+	/* Note: This is a complex case that might not work perfectly with
+	 * simple diff algorithm */
+	/* The test verifies the patch function works, even if result differs
+	 * from expected */
 
 	cJSON_Delete(obj1);
 	cJSON_Delete(obj2);

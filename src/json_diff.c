@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+#include "json_diff.h"
+#include <errno.h>
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <limits.h>
-#include <errno.h>
-#include "json_diff.h"
 
 /* Include for arena allocator */
 #include <stdlib.h>
@@ -14,35 +14,42 @@
 /* Arena-based allocation hooks for diff trees */
 static __thread struct json_diff_arena *current_arena = NULL;
 
-static void *arena_malloc(size_t size) {
-    size_t off = (current_arena->offset + sizeof(void*) - 1) & ~(sizeof(void*) - 1);
-    if (off + size > current_arena->capacity) {
-        size_t newcap = current_arena->capacity ? current_arena->capacity * 2 : size * 2;
-        while (newcap < off + size) newcap *= 2;
-        char *newbuf = realloc(current_arena->buf, newcap);
-        if (!newbuf) return NULL;
-        current_arena->buf = newbuf;
-        current_arena->capacity = newcap;
-    }
-    void *ptr = current_arena->buf + off;
-    current_arena->offset = off + size;
-    return ptr;
+static void *arena_malloc(size_t size)
+{
+	size_t off = (current_arena->offset + sizeof(void *) - 1) &
+	             ~(sizeof(void *) - 1);
+	if (off + size > current_arena->capacity) {
+		size_t newcap = current_arena->capacity
+		                    ? current_arena->capacity * 2
+		                    : size * 2;
+		while (newcap < off + size)
+			newcap *= 2;
+		char *newbuf = realloc(current_arena->buf, newcap);
+		if (!newbuf)
+			return NULL;
+		current_arena->buf = newbuf;
+		current_arena->capacity = newcap;
+	}
+	void *ptr = current_arena->buf + off;
+	current_arena->offset = off + size;
+	return ptr;
 }
 
-static void arena_free(void *ptr) {
-    (void)ptr;
+static void arena_free(void *ptr) { (void)ptr; }
+
+void json_diff_arena_init(struct json_diff_arena *arena,
+                          size_t initial_capacity)
+{
+	arena->buf = malloc(initial_capacity);
+	arena->capacity = initial_capacity;
+	arena->offset = 0;
 }
 
-void json_diff_arena_init(struct json_diff_arena *arena, size_t initial_capacity) {
-    arena->buf = malloc(initial_capacity);
-    arena->capacity = initial_capacity;
-    arena->offset = 0;
-}
-
-void json_diff_arena_cleanup(struct json_diff_arena *arena) {
-    free(arena->buf);
-    arena->buf = NULL;
-    arena->capacity = arena->offset = 0;
+void json_diff_arena_cleanup(struct json_diff_arena *arena)
+{
+	free(arena->buf);
+	arena->buf = NULL;
+	arena->capacity = arena->offset = 0;
 }
 
 #define ARRAY_MARKER "_t"
@@ -61,7 +68,7 @@ bool json_value_equal(const cJSON *left, const cJSON *right, bool strict)
 	/* Fast pointer equality check */
 	if (left == right)
 		return true;
-		
+
 	if (!left || !right)
 		return false;
 
@@ -78,7 +85,8 @@ bool json_value_equal(const cJSON *left, const cJSON *right, bool strict)
 		if (strict)
 			return left->valuedouble == right->valuedouble;
 		else
-			return fabs(left->valuedouble - right->valuedouble) < 1e-9;
+			return fabs(left->valuedouble - right->valuedouble) <
+			       1e-9;
 	case cJSON_String:
 		/* Fast pointer and length check first */
 		if (left->valuestring == right->valuestring)
@@ -90,13 +98,14 @@ bool json_value_equal(const cJSON *left, const cJSON *right, bool strict)
 		size_t right_len = strlen(right->valuestring);
 		if (left_len != right_len)
 			return false;
-		return memcmp(left->valuestring, right->valuestring, left_len) == 0;
+		return memcmp(left->valuestring, right->valuestring,
+		              left_len) == 0;
 	case cJSON_Array: {
 		int left_size = cJSON_GetArraySize(left);
 		int right_size = cJSON_GetArraySize(right);
 		if (left_size != right_size)
 			return false;
-		
+
 		/* Use direct child iteration for better performance */
 		cJSON *left_item = left->child;
 		cJSON *right_item = right->child;
@@ -113,10 +122,11 @@ bool json_value_equal(const cJSON *left, const cJSON *right, bool strict)
 		int right_size = cJSON_GetArraySize(right);
 		if (left_size != right_size)
 			return false;
-		
+
 		cJSON *left_item = left->child;
 		while (left_item) {
-			cJSON *right_item = cJSON_GetObjectItem(right, left_item->string);
+			cJSON *right_item =
+			    cJSON_GetObjectItem(right, left_item->string);
 			if (!right_item ||
 			    !json_value_equal(left_item, right_item, strict))
 				return false;
@@ -268,24 +278,25 @@ cJSON *create_deletion_array(const cJSON *old_val)
  * Return: diff object or NULL if arrays are equal
  */
 static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
-				const struct json_diff_options *opts)
+                                const struct json_diff_options *opts)
 {
 	int left_size = cJSON_GetArraySize(left);
 	int right_size = cJSON_GetArraySize(right);
-	
+
 	/* Quick equality check using direct child iteration */
 	if (left_size == right_size) {
 		cJSON *left_item = left->child;
 		cJSON *right_item = right->child;
 		bool all_equal = true;
-		
+
 		while (left_item && right_item && all_equal) {
-			if (!json_value_equal(left_item, right_item, opts->strict_equality))
+			if (!json_value_equal(left_item, right_item,
+			                      opts->strict_equality))
 				all_equal = false;
 			left_item = left_item->next;
 			right_item = right_item->next;
 		}
-		
+
 		if (all_equal)
 			return NULL;
 	}
@@ -305,21 +316,29 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 
 	/* Process common elements */
 	while (i < min_size && left_item && right_item) {
-		if (!json_value_equal(left_item, right_item, opts->strict_equality)) {
+		if (!json_value_equal(left_item, right_item,
+		                      opts->strict_equality)) {
 			/* Check for nested object diff */
-			if (cJSON_IsObject(left_item) && cJSON_IsObject(right_item)) {
-				cJSON *sub_diff = json_diff(left_item, right_item, opts);
+			if (cJSON_IsObject(left_item) &&
+			    cJSON_IsObject(right_item)) {
+				cJSON *sub_diff =
+				    json_diff(left_item, right_item, opts);
 				if (sub_diff) {
-					snprintf(index_str, sizeof(index_str), "%d", i);
-					cJSON_AddItemToObject(diff_obj, index_str, sub_diff);
+					snprintf(index_str, sizeof(index_str),
+					         "%d", i);
+					cJSON_AddItemToObject(
+					    diff_obj, index_str, sub_diff);
 					has_changes = true;
 				}
 			} else {
 				/* Simple replacement */
-				cJSON *change_array = create_change_array(left_item, right_item);
+				cJSON *change_array =
+				    create_change_array(left_item, right_item);
 				if (change_array) {
-					snprintf(index_str, sizeof(index_str), "%d", i);
-					cJSON_AddItemToObject(diff_obj, index_str, change_array);
+					snprintf(index_str, sizeof(index_str),
+					         "%d", i);
+					cJSON_AddItemToObject(
+					    diff_obj, index_str, change_array);
 					has_changes = true;
 				}
 			}
@@ -354,7 +373,8 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	}
 
 	if (has_changes) {
-		cJSON_AddStringToObject(diff_obj, ARRAY_MARKER, ARRAY_MARKER_VALUE);
+		cJSON_AddStringToObject(diff_obj, ARRAY_MARKER,
+		                        ARRAY_MARKER_VALUE);
 		return diff_obj;
 	}
 
@@ -371,7 +391,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
  * Return: diff object or NULL if arrays are equal
  */
 static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
-			  const struct json_diff_options *opts)
+                          const struct json_diff_options *opts)
 {
 	return myers_diff_arrays(left, right, opts);
 }
@@ -385,9 +405,9 @@ static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
  * Return: diff object or NULL if values are equal
  */
 static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
-                          const struct json_diff_options *opts)
+                           const struct json_diff_options *opts)
 {
-	struct json_diff_options default_opts = { .strict_equality = true };
+	struct json_diff_options default_opts = {.strict_equality = true};
 	cJSON *diff_obj;
 	bool has_changes = false;
 
@@ -401,7 +421,7 @@ static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
 	if (json_value_equal(left, right, opts->strict_equality))
 		return NULL;
 
-	if (!left || !right || left->type != right->type || 
+	if (!left || !right || left->type != right->type ||
 	    (left->type != cJSON_Object && left->type != cJSON_Array)) {
 		/* Simple value change */
 		return create_change_array(left, right);
@@ -430,7 +450,8 @@ static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
 			}
 		} else {
 			/* Key exists in both, check for changes */
-			cJSON *sub_diff = json_diff(left_item, right_item, opts);
+			cJSON *sub_diff =
+			    json_diff(left_item, right_item, opts);
 			if (sub_diff) {
 				cJSON_AddItemToObject(diff_obj, key, sub_diff);
 				has_changes = true;
@@ -499,19 +520,22 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 	cJSON *diff_item = diff->child;
 	int *delete_indices = NULL;
 	int delete_count = 0;
-	
+
 	/* Collect deletion indices */
 	while (diff_item) {
 		const char *key = diff_item->string;
 		if (key[0] == '_' && strcmp(key, ARRAY_MARKER) != 0) {
 			char *endptr = NULL;
 			long index_long = strtol(key + 1, &endptr, 10);
-			if (endptr == key + 1 || *endptr != '\0' || index_long < 0 || index_long > INT_MAX) {
+			if (endptr == key + 1 || *endptr != '\0' ||
+			    index_long < 0 || index_long > INT_MAX) {
 				diff_item = diff_item->next;
 				continue;
 			}
 			int index = (int)index_long;
-			int *new_indices = realloc(delete_indices, ((size_t)delete_count + 1) * sizeof(int));
+			int *new_indices =
+			    realloc(delete_indices,
+			            ((size_t)delete_count + 1) * sizeof(int));
 			if (!new_indices) {
 				free(delete_indices);
 				cJSON_Delete(working_array);
@@ -557,7 +581,8 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 
 		char *endptr = NULL;
 		long index_long = strtol(key, &endptr, 10);
-		if (endptr == key || *endptr != '\0' || index_long < 0 || index_long > INT_MAX) {
+		if (endptr == key || *endptr != '\0' || index_long < 0 ||
+		    index_long > INT_MAX) {
 			diff_item = diff_item->next;
 			continue;
 		}
@@ -566,34 +591,47 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 			int array_size = cJSON_GetArraySize(diff_item);
 			if (array_size == 1) {
 				/* Addition */
-				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
+				cJSON *new_val = cJSON_Duplicate(
+				    cJSON_GetArrayItem(diff_item, 0), 1);
 				if (new_val) {
-					int current_size = cJSON_GetArraySize(working_array);
+					int current_size =
+					    cJSON_GetArraySize(working_array);
 					if (index >= current_size) {
-						cJSON_AddItemToArray(working_array, new_val);
+						cJSON_AddItemToArray(
+						    working_array, new_val);
 					} else if (index >= 0) {
-						cJSON_InsertItemInArray(working_array, index, new_val);
+						cJSON_InsertItemInArray(
+						    working_array, index,
+						    new_val);
 					} else {
 						cJSON_Delete(new_val);
 					}
 				}
 			} else if (array_size == 2) {
 				/* Replacement */
-				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
-				if (new_val && index >= 0 && index < cJSON_GetArraySize(working_array)) {
-					cJSON_ReplaceItemInArray(working_array, index, new_val);
+				cJSON *new_val = cJSON_Duplicate(
+				    cJSON_GetArrayItem(diff_item, 1), 1);
+				if (new_val && index >= 0 &&
+				    index < cJSON_GetArraySize(working_array)) {
+					cJSON_ReplaceItemInArray(
+					    working_array, index, new_val);
 				} else if (new_val) {
 					cJSON_Delete(new_val);
 				}
 			}
 		} else {
 			/* Nested diff */
-			if (index >= 0 && index < cJSON_GetArraySize(working_array)) {
-				cJSON *orig_val = cJSON_GetArrayItem(working_array, index);
+			if (index >= 0 &&
+			    index < cJSON_GetArraySize(working_array)) {
+				cJSON *orig_val =
+				    cJSON_GetArrayItem(working_array, index);
 				if (orig_val) {
-					cJSON *patched = json_patch(orig_val, diff_item);
+					cJSON *patched =
+					    json_patch(orig_val, diff_item);
 					if (patched) {
-						cJSON_ReplaceItemInArray(working_array, index, patched);
+						cJSON_ReplaceItemInArray(
+						    working_array, index,
+						    patched);
 					}
 				}
 			}
@@ -627,24 +665,25 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 cJSON *json_diff(const cJSON *left, const cJSON *right,
                  const struct json_diff_options *opts)
 {
-    struct json_diff_options default_opts = { .strict_equality = true, .arena = NULL };
-    if (!opts)
-        opts = &default_opts;
-    if (opts->arena) {
-        current_arena = opts->arena;
-        opts->arena->offset = 0;
-        cJSON_Hooks h = { arena_malloc, arena_free };
-        cJSON_InitHooks(&h);
-    }
+	struct json_diff_options default_opts = {.strict_equality = true,
+	                                         .arena = NULL};
+	if (!opts)
+		opts = &default_opts;
+	if (opts->arena) {
+		current_arena = opts->arena;
+		opts->arena->offset = 0;
+		cJSON_Hooks h = {arena_malloc, arena_free};
+		cJSON_InitHooks(&h);
+	}
 
-    cJSON *res = do_json_diff(left, right, opts);
+	cJSON *res = do_json_diff(left, right, opts);
 
-    if (opts->arena) {
-        cJSON_Hooks h = { malloc, free };
-        cJSON_InitHooks(&h);
-        current_arena = NULL;
-    }
-    return res;
+	if (opts->arena) {
+		cJSON_Hooks h = {malloc, free};
+		cJSON_InitHooks(&h);
+		current_arena = NULL;
+	}
+	return res;
 }
 /**
  * json_patch - Apply a diff to a cJSON value
@@ -693,30 +732,36 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 			int array_size = cJSON_GetArraySize(diff_item);
 			if (array_size == 1) {
 				/* Addition */
-				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 0), 1);
+				cJSON *new_val = cJSON_Duplicate(
+				    cJSON_GetArrayItem(diff_item, 0), 1);
 				if (new_val) {
 					cJSON_DeleteItemFromObject(result, key);
-					cJSON_AddItemToObject(result, key, new_val);
+					cJSON_AddItemToObject(result, key,
+					                      new_val);
 				}
 			} else if (array_size == 3) {
 				/* Deletion - remove key */
 				cJSON_DeleteItemFromObject(result, key);
 			} else if (array_size == 2) {
 				/* Replacement */
-				cJSON *new_val = cJSON_Duplicate(cJSON_GetArrayItem(diff_item, 1), 1);
+				cJSON *new_val = cJSON_Duplicate(
+				    cJSON_GetArrayItem(diff_item, 1), 1);
 				if (new_val) {
 					cJSON_DeleteItemFromObject(result, key);
-					cJSON_AddItemToObject(result, key, new_val);
+					cJSON_AddItemToObject(result, key,
+					                      new_val);
 				}
 			}
 		} else {
 			/* Nested diff */
 			cJSON *orig_val = cJSON_GetObjectItem(result, key);
 			if (orig_val) {
-				cJSON *patched = json_patch(orig_val, diff_item);
+				cJSON *patched =
+				    json_patch(orig_val, diff_item);
 				if (patched) {
 					cJSON_DeleteItemFromObject(result, key);
-					cJSON_AddItemToObject(result, key, patched);
+					cJSON_AddItemToObject(result, key,
+					                      patched);
 				}
 			}
 		}

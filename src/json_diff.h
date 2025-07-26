@@ -2,8 +2,8 @@
 #ifndef JSON_DIFF_H
 #define JSON_DIFF_H
 
-#include <stdbool.h>
 #include <cjson/cJSON.h>
+#include <stdbool.h>
 
 /**
  * struct json_diff_arena - Arena for diff allocations
@@ -12,9 +12,9 @@
  * @offset: current used bytes (bump pointer)
  */
 struct json_diff_arena {
-    char *buf;
-    size_t capacity;
-    size_t offset;
+	char *buf;
+	size_t capacity;
+	size_t offset;
 };
 
 /**
@@ -22,10 +22,10 @@ struct json_diff_arena {
  * @strict_equality: use strict equality comparison for numbers
  */
 struct json_diff_options {
-    /**
-     * strict_equality - use strict equality comparison for numbers
-     * arena: optional arena for diff allocations (NULL for heap alloc)
-     */
+	/**
+	 * strict_equality - use strict equality comparison for numbers
+	 * arena: optional arena for diff allocations (NULL for heap alloc)
+	 */
 	bool strict_equality;
 	struct json_diff_arena *arena;
 };
@@ -39,7 +39,8 @@ extern "C" {
  * @arena: arena struct to initialize
  * @initial_capacity: initial buffer size in bytes
  */
-void json_diff_arena_init(struct json_diff_arena *arena, size_t initial_capacity);
+void json_diff_arena_init(struct json_diff_arena *arena,
+                          size_t initial_capacity);
 
 /**
  * json_diff_arena_cleanup - Free resources held by a diff arena
@@ -58,7 +59,7 @@ void json_diff_arena_cleanup(struct json_diff_arena *arena);
  * Return: diff object or NULL if values are equal
  */
 cJSON *json_diff(const cJSON *left, const cJSON *right,
-		 const struct json_diff_options *opts);
+                 const struct json_diff_options *opts);
 
 /**
  * json_patch - Apply a diff to a cJSON value
