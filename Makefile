@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra -Werror -O2 -g
+CFLAGS = -std=c11 -Wall -Wextra -Werror -O2 -g -I.
 LDFLAGS = -lm -lcjson
 
 SOURCES = src/json_diff.c
