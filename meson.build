@@ -37,6 +37,24 @@ test_exe = executable('test_json_diff',
 # Register test
 test('json_diff_test', test_exe)
 
+# Fuzzing support (only if compiler supports it)
+cc = meson.get_compiler('c')
+if cc.has_argument('-fsanitize=fuzzer')
+  fuzz_exe = executable('fuzz_json_diff',
+    'fuzz_json_diff.c',
+    link_with : json_diff_lib,
+    dependencies : [cjson_dep, math_dep],
+    c_args : ['-fsanitize=fuzzer', '-g'],
+    link_args : ['-fsanitize=fuzzer'],
+    install : false
+  )
+  
+  # Add a custom target for running the fuzzer
+  run_target('fuzz',
+    command : [fuzz_exe, '-max_total_time=60', 'corpus/']
+  )
+endif
+
 # Declare dependency for other projects
 json_diff_dep = declare_dependency(
   link_with : json_diff_lib,

@@ -167,8 +167,32 @@ The test suite includes:
 
 Run tests with:
 ```bash
-make test
+meson test -C builddir
 ```
+
+### Fuzzing
+
+The project includes fuzzing support using libFuzzer to find bugs and edge cases:
+
+```bash
+# Build with fuzzing support (requires clang)
+CC=clang meson setup builddir-fuzz
+meson compile -C builddir-fuzz
+
+# Create corpus directory for fuzzer inputs
+mkdir -p corpus
+
+# Add some initial test cases to corpus
+echo '{"test": 1}' > corpus/simple1.json
+echo '{"test": 2}' > corpus/simple2.json
+echo '{"arr": [1,2,3]}' > corpus/array1.json
+echo '{"arr": [2,3,4]}' > corpus/array2.json
+
+# Run fuzzer for 60 seconds
+meson compile fuzz -C builddir-fuzz
+```
+
+The fuzzer will automatically generate test cases and report any crashes or hangs.
 
 ## License
 
