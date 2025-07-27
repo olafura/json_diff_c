@@ -2,6 +2,7 @@
 #define __STDC_WANT_LIB_EXT1__ 1
 #include "src/json_diff.h"
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>

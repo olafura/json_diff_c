@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Property-based testing for specific issues found in json_diff
+#define __STDC_WANT_LIB_EXT1__ 1
 #include "src/json_diff.h"
 #include <assert.h>
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

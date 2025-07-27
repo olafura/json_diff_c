@@ -367,7 +367,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				    create_deletion_array(left_item);
 				if (add_array && del_array) {
 					/* Addition at index */
-					(void)snprintf(index_str, sizeof(index_str),
+					(void)snprintf_s(index_str, sizeof(index_str),
 					         "%d", i);
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, add_array);
