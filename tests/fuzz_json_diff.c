@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-#include "src/json_diff.h"
 #define __STDC_WANT_LIB_EXT1__ 1
+#include "src/json_diff.h"
 #include <errno.h>
 #include <limits.h>
 #include <stddef.h>
@@ -8,6 +8,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Declare C11 Annex K secure functions if not available */
+#ifndef __STDC_LIB_EXT1__
+typedef size_t rsize_t;
+typedef int errno_t;
+
+errno_t snprintf_s(char *restrict s, rsize_t n, const char *restrict format, ...);
+errno_t memcpy_s(void *restrict s1, rsize_t s1max, const void *restrict s2, rsize_t n);
+
+/* Simple implementations for systems without Annex K */
+#include <stdarg.h>
+errno_t snprintf_s(char *restrict s, rsize_t n, const char *restrict format, ...)
+{
+    if (!s || n == 0) return EINVAL;
+    va_list args;
+    va_start(args, format);
+    int result = vsnprintf(s, n, format, args);
+    va_end(args);
+    return (result >= 0 && (size_t)result < n) ? 0 : ERANGE;
+}
+
+errno_t memcpy_s(void *restrict s1, rsize_t s1max, const void *restrict s2, rsize_t n)
+{
+    if (!s1 || !s2 || s1max < n) return EINVAL;
+    memcpy(s1, s2, n);
+    return 0;
+}
+#endif
 
 
 /* Simple PRNG for fuzzer-driven generation */
@@ -78,7 +106,7 @@ static cJSON *fuzz_generate_object(const uint8_t *data, size_t size, int depth,
 
 	for (int i = 0; i < num_fields && chunk_size > 0; i++) {
 		char key[32];
-		(void)snprintf(key, sizeof(key), "k%d", i);
+		snprintf_s(key, sizeof(key), "k%d", i);
 
 		size_t offset = (size_t)i * chunk_size;
 		if (offset < size) {
@@ -123,7 +151,7 @@ static cJSON *fuzz_generate_json(const uint8_t *data, size_t size,
 	{
 		double num = 0.0;
 		if (size >= sizeof(double)) {
-			(void)memcpy(&num, data, sizeof(double));
+			memcpy_s(&num, sizeof(double), data, sizeof(double));
 			/* Clamp to reasonable range to avoid inf/nan issues in
 			 * tests */
 			if (num != num || num > 1e10 || num < -1e10) {
@@ -208,7 +236,7 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 1) {
-					(void)memcpy(new_str, original->valuestring, copy_len + 1);
+					memcpy_s(new_str, len + 2, original->valuestring, copy_len + 1);
 					if (len > 0 && size > 1) {
 						/* Modify one character */
 						new_str[data[1] % len] =
@@ -409,8 +437,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		char *json2_str = malloc(size - split_point + 1);
 
 		if (json1_str && json2_str) {
-			(void)memcpy(json1_str, data, split_point);
-			(void)memcpy(json2_str, data + split_point, size - split_point);
+			memcpy_s(json1_str, split_point + 1, data, split_point);
+			memcpy_s(json2_str, size - split_point + 1, data + split_point, size - split_point);
 
 			json1_str[split_point] = '\0';
 			json2_str[size - split_point] = '\0';

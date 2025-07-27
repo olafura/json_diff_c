@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-#include "src/json_diff.h"
 #define __STDC_WANT_LIB_EXT1__ 1
+#include "src/json_diff.h"
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
@@ -8,6 +8,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+/* Declare C11 Annex K secure functions if not available */
+#ifndef __STDC_LIB_EXT1__
+typedef size_t rsize_t;
+typedef int errno_t;
+
+errno_t snprintf_s(char *restrict s, rsize_t n, const char *restrict format, ...);
+errno_t memcpy_s(void *restrict s1, rsize_t s1max, const void *restrict s2, rsize_t n);
+
+/* Simple implementations for systems without Annex K */
+#include <stdarg.h>
+errno_t snprintf_s(char *restrict s, rsize_t n, const char *restrict format, ...)
+{
+    if (!s || n == 0) return EINVAL;
+    va_list args;
+    va_start(args, format);
+    int result = vsnprintf(s, n, format, args);
+    va_end(args);
+    return (result >= 0 && (size_t)result < n) ? 0 : ERANGE;
+}
+
+errno_t memcpy_s(void *restrict s1, rsize_t s1max, const void *restrict s2, rsize_t n)
+{
+    if (!s1 || !s2 || s1max < n) return EINVAL;
+    memcpy(s1, s2, n);
+    return 0;
+}
+#endif
 
 /* Simple PRNG for reproducible testing */
 static unsigned long rng_state = 12345;
@@ -79,7 +107,7 @@ static cJSON *generate_random_object(int depth, int max_depth)
 	int num_fields = rand_int(0, 5);
 	for (int i = 0; i < num_fields; i++) {
 		char key[32];
-		(void)snprintf(key, sizeof(key), "key_%d", i);
+		snprintf_s(key, sizeof(key), "key_%d", i);
 
 		cJSON *value = generate_random_value(depth + 1, max_depth);
 		if (value) {
@@ -180,7 +208,7 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 10) {
-					(void)memcpy(new_str, original->valuestring, copy_len + 1);
+					memcpy_s(new_str, len + 10, original->valuestring, copy_len + 1);
 					if (len > 0 && rand_double() < 0.5) {
 						/* Change one character */
 						new_str[rand_int(0, (int)len - 1)] =
@@ -261,8 +289,7 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 		/* Sometimes add new fields */
 		if (rand_double() < 0.3) {
 			char new_key[32];
-			(void)snprintf(new_key, sizeof(new_key), "mut_%d",
-			         rand_int(1000, 9999));
+			snprintf_s(new_key, sizeof(new_key), "mut_%d", rand_int(1000, 9999));
 			cJSON *new_value = generate_random_value(0, 3);
 			if (new_value) {
 				cJSON_AddItemToObject(new_object, new_key,
