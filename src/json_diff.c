@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-#define __STDC_LIB_EXT1__ 1
+#define __STDC_WANT_LIB_EXT1__ 1
 #include "json_diff.h"
 #include <errno.h>
 #include <limits.h>
