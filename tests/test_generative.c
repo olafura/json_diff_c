@@ -180,23 +180,22 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 10) {
 					memcpy(new_str, original->valuestring, copy_len + 1);
+					if (len > 0 && rand_double() < 0.5) {
+						/* Change one character */
+						new_str[rand_int(0, (int)len - 1)] =
+						    (char)rand_int(32, 126);
+					}
+					if (rand_double() < 0.3) {
+						/* Append character */
+						new_str[len] = (char)rand_int(32, 126);
+						new_str[len + 1] = '\0';
+					}
+					cJSON *result = cJSON_CreateString(new_str);
+					free(new_str);
+					return result;
 				} else {
 					free(new_str);
-					new_str = NULL;
 				}
-				if (len > 0 && rand_double() < 0.5) {
-					/* Change one character */
-					new_str[rand_int(0, (int)len - 1)] =
-					    (char)rand_int(32, 126);
-				}
-				if (rand_double() < 0.3) {
-					/* Append character */
-					new_str[len] = (char)rand_int(32, 126);
-					new_str[len + 1] = '\0';
-				}
-				cJSON *result = cJSON_CreateString(new_str);
-				free(new_str);
-				return result;
 			}
 		}
 		/* Generate new string or change type */

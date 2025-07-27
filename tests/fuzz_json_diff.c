@@ -39,10 +39,6 @@ static int fuzz_rand_int(int min, int max)
 	return min + (int)(fuzz_rand() % (unsigned long)(max - min + 1));
 }
 
-static double fuzz_rand_double(void)
-{
-	return (double)fuzz_rand() / (double)ULONG_MAX;
-}
 
 /* Generate random JSON using fuzzer input as seed */
 static cJSON *fuzz_generate_json(const uint8_t *data, size_t size,
@@ -221,15 +217,20 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 			size_t len = strlen(original->valuestring);
 			char *new_str = malloc(len + 2);
 			if (new_str) {
-				strcpy(new_str, original->valuestring);
-				if (len > 0 && size > 1) {
-					/* Modify one character */
-					new_str[data[1] % len] =
-					    (char)((data[1] % 95) + 32);
+				size_t copy_len = strlen(original->valuestring);
+				if (copy_len < len + 1) {
+					memcpy(new_str, original->valuestring, copy_len + 1);
+					if (len > 0 && size > 1) {
+						/* Modify one character */
+						new_str[data[1] % len] =
+						    (char)((data[1] % 95) + 32);
+					}
+					cJSON *result = cJSON_CreateString(new_str);
+					free(new_str);
+					return result;
+				} else {
+					free(new_str);
 				}
-				cJSON *result = cJSON_CreateString(new_str);
-				free(new_str);
-				return result;
 			}
 		}
 		return cJSON_CreateString(
