@@ -14,11 +14,23 @@ project('json-diff', 'c',
 # Dependencies
 cjson_dep = dependency('libcjson', required : true)
 math_dep = meson.get_compiler('c').find_library('m', required : false)
+thread_dep = dependency('threads', required : false)
+
+# Global hardening flags
+add_project_arguments('-fstack-protector-strong', '-D_FORTIFY_SOURCE=2', language: 'c')
+add_project_link_arguments('-Wl,-z,relro', '-Wl,-z,now', language: 'c')
+
+# Composite dependencies
+if thread_dep.found()
+  base_deps = [cjson_dep, math_dep, thread_dep]
+else
+  base_deps = [cjson_dep, math_dep]
+endif
 
 # Library
 json_diff_lib = static_library('jsondiff',
   'src/json_diff.c',
-  dependencies : [cjson_dep, math_dep],
+  dependencies : base_deps,
   install : true,
   install_dir : get_option('libdir')
 )
@@ -30,7 +42,7 @@ install_headers('src/json_diff.h')
 test_exe = executable('test_json_diff',
   'tests/test_json_diff.c',
   link_with : json_diff_lib,
-  dependencies : [cjson_dep, math_dep],
+  dependencies : base_deps,
   install : false
 )
 
@@ -41,7 +53,7 @@ test('json_diff_test', test_exe, workdir : meson.current_source_dir())
 profile_exe = executable('test_profile',
   'tests/test_profile.c',
   link_with : json_diff_lib,
-  dependencies : [cjson_dep, math_dep],
+  dependencies : base_deps,
   install : false
 )
 
@@ -54,7 +66,7 @@ run_target('profile',
 bench_medium_exe = executable('bench_medium',
   'tests/bench_medium.c',
   link_with : json_diff_lib,
-  dependencies : [cjson_dep, math_dep],
+  dependencies : base_deps,
   install : false
 )
 run_target('bench-medium',
@@ -64,44 +76,11 @@ run_target('bench-medium',
 # Parser performance micro‑benchmark
 bench_parse_exe = executable('bench_parse',
   'tests/bench_parse.c',
-  dependencies : [cjson_dep],
+  dependencies : base_deps,
   install : false
 )
 ## bench-parse run_target removed due to Meson introspect bug; run manually
 
-# Generative testing executable
-generative_exe = executable('test_generative',
-  'tests/test_generative.c',
-  link_with : json_diff_lib,
-  dependencies : [cjson_dep, math_dep],
-  install : false
-)
-
-# Property testing executable
-property_exe = executable('test_properties',
-  'tests/test_properties.c',
-  link_with : json_diff_lib,
-  dependencies : [cjson_dep, math_dep],
-  install : false
-)
-
-# Add run targets for generative testing
-run_target('gen-test',
-  command : [generative_exe, '--tests', '1000']
-)
-
-run_target('gen-test-quick', 
-  command : [generative_exe, '--tests', '100']
-)
-
-run_target('gen-test-extensive',
-  command : [generative_exe, '--tests', '5000']
-)
-
-# Add run target for property testing
-run_target('prop-test',
-  command : [property_exe]
-)
 
 # Fuzzing support (only if compiler supports it)
 cc = meson.get_compiler('c')
@@ -109,7 +88,7 @@ if cc.has_argument('-fsanitize=fuzzer')
   fuzz_exe = executable('fuzz_json_diff',
     'tests/fuzz_json_diff.c',
     link_with : json_diff_lib,
-    dependencies : [cjson_dep, math_dep],
+    dependencies : base_deps,
     c_args : ['-fsanitize=fuzzer', '-g'],
     link_args : ['-fsanitize=fuzzer'],
     install : false

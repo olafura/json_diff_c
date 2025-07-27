@@ -3,7 +3,9 @@
 #include "src/json_diff.h"
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +20,7 @@ static char *read_file(const char *filename)
 		return NULL;
 	}
 	long len = ftell(f);
-	if (len < 0) {
+	if (len < 0 || (size_t)len > SIZE_MAX - 1) {
 		fclose(f);
 		return NULL;
 	}
@@ -32,6 +34,11 @@ static char *read_file(const char *filename)
 		return NULL;
 	}
 	size_t n = fread(buf, 1, (size_t)len, f);
+	if (ferror(f) || n > (size_t)len) {
+		free(buf);
+		fclose(f);
+		return NULL;
+	}
 	buf[n] = '\0';
 	fclose(f);
 	return buf;
