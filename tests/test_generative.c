@@ -179,7 +179,7 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 10) {
-					memcpy(new_str, original->valuestring, copy_len + 1);
+					(void)memcpy(new_str, original->valuestring, copy_len + 1);
 					if (len > 0 && rand_double() < 0.5) {
 						/* Change one character */
 						new_str[rand_int(0, (int)len - 1)] =
