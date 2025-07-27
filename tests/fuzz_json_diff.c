@@ -419,12 +419,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		char *json1_str = malloc(split_point + 1);
 		char *json2_str = malloc(size - split_point + 1);
 
-		if (json1_str && json2_str) {
-			if (memcpy_s(json1_str, split_point + 1, data,
-			             split_point) == 0 &&
-			    memcpy_s(json2_str, size - split_point + 1,
-			             data + split_point,
-			             size - split_point) == 0) {
+		if (json1_str && json2_str &&
+		    split_point <= split_point + 1 &&
+		    size - split_point <= size - split_point + 1) {
+			(void)memcpy(json1_str, data, split_point);
+			(void)memcpy(json2_str, data + split_point, size - split_point);
 
 				json1_str[split_point] = '\0';
 				json2_str[size - split_point] = '\0';
