@@ -94,7 +94,8 @@ static void test_basic_diff(void)
 		return;
 	}
 	if (cJSON_GetArraySize(test_diff) != 2) {
-		printf("ERROR: 'test' array size is %d, expected 2\n", cJSON_GetArraySize(test_diff));
+		printf("ERROR: 'test' array size is %d, expected 2\n",
+		       cJSON_GetArraySize(test_diff));
 		printf("Basic diff test failed!\n");
 		cJSON_Delete(diff);
 		cJSON_Delete(obj1);
@@ -120,7 +121,8 @@ static void test_basic_diff(void)
 		return;
 	}
 	if (fabs(old_val->valuedouble - 1.0) >= 1e-9) {
-		printf("ERROR: old_val is %f, expected 1.0\n", old_val->valuedouble);
+		printf("ERROR: old_val is %f, expected 1.0\n",
+		       old_val->valuedouble);
 		printf("Basic diff test failed!\n");
 		cJSON_Delete(diff);
 		cJSON_Delete(obj1);
@@ -128,7 +130,8 @@ static void test_basic_diff(void)
 		return;
 	}
 	if (fabs(new_val->valuedouble - 2.0) >= 1e-9) {
-		printf("ERROR: new_val is %f, expected 2.0\n", new_val->valuedouble);
+		printf("ERROR: new_val is %f, expected 2.0\n",
+		       new_val->valuedouble);
 		printf("Basic diff test failed!\n");
 		cJSON_Delete(diff);
 		cJSON_Delete(obj1);
@@ -789,7 +792,8 @@ static void test_bigger_patch(void)
 		cJSON_Delete(obj1);
 		cJSON_Delete(obj2);
 		cJSON_Delete(diff);
-		if (patched) cJSON_Delete(patched);
+		if (patched)
+			cJSON_Delete(patched);
 		free(s1);
 		free(s2);
 		return;

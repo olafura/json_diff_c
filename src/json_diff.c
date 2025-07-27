@@ -8,8 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-
 /* Include for arena allocator */
 #include <stdlib.h>
 #include <string.h>
@@ -327,11 +325,13 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				cJSON *sub_diff =
 				    json_diff(left_item, right_item, opts);
 				if (sub_diff) {
-					if (__STDC_LIB_EXT1__) {
-						snprintf_s(index_str, sizeof(index_str), "%d", i);
-					} else {
-						snprintf(index_str, sizeof(index_str), "%d", i);
-					}
+#ifdef __STDC_LIB_EXT1__
+					snprintf_s(index_str, sizeof(index_str),
+					           "%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+					snprintf(index_str, sizeof(index_str),
+					         "%d", i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, sub_diff);
 					has_changes = true;
@@ -345,21 +345,25 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				    create_deletion_array(left_item);
 				if (add_array && del_array) {
 					/* Addition at index */
-					if (__STDC_LIB_EXT1__) {
-						(void)snprintf_s(index_str, sizeof(index_str),
-						         "%d", i);
-					} else {
-						(void)snprintf(index_str, sizeof(index_str),
-						         "%d", i);
-					}
+#ifdef __STDC_LIB_EXT1__
+					(void)snprintf_s(index_str,
+					                 sizeof(index_str),
+					                 "%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+					(void)snprintf(index_str,
+					               sizeof(index_str), "%d",
+					               i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, add_array);
 					/* Deletion at index */
-					if (__STDC_LIB_EXT1__) {
-						snprintf_s(index_str, sizeof(index_str), "_%d", i);
-					} else {
-						snprintf(index_str, sizeof(index_str), "_%d", i);
-					}
+#ifdef __STDC_LIB_EXT1__
+					snprintf_s(index_str, sizeof(index_str),
+					           "_%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+					snprintf(index_str, sizeof(index_str),
+					         "_%d", i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, del_array);
 					has_changes = true;
@@ -380,11 +384,11 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	while (left_item) {
 		cJSON *del_array = create_deletion_array(left_item);
 		if (del_array) {
-			if (__STDC_LIB_EXT1__) {
-				snprintf_s(index_str, sizeof(index_str), "_%d", i);
-			} else {
-				snprintf(index_str, sizeof(index_str), "_%d", i);
-			}
+#ifdef __STDC_LIB_EXT1__
+			snprintf_s(index_str, sizeof(index_str), "_%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+			snprintf(index_str, sizeof(index_str), "_%d", i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 			cJSON_AddItemToObject(diff_obj, index_str, del_array);
 			has_changes = true;
 		}
@@ -396,11 +400,11 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	while (right_item) {
 		cJSON *ins_array = create_addition_array(right_item);
 		if (ins_array) {
-			if (__STDC_LIB_EXT1__) {
-				snprintf_s(index_str, sizeof(index_str), "%d", i);
-			} else {
-				snprintf(index_str, sizeof(index_str), "%d", i);
-			}
+#ifdef __STDC_LIB_EXT1__
+			snprintf_s(index_str, sizeof(index_str), "%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+			snprintf(index_str, sizeof(index_str), "%d", i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 			cJSON_AddItemToObject(diff_obj, index_str, ins_array);
 			has_changes = true;
 		}
@@ -556,11 +560,14 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 			} else if (cJSON_IsArray(orig_item)) {
 				copy = cJSON_CreateArrayReference(orig_item);
 			} else if (cJSON_IsString(orig_item)) {
-				copy = cJSON_CreateString(orig_item->valuestring);
+				copy =
+				    cJSON_CreateString(orig_item->valuestring);
 			} else if (cJSON_IsNumber(orig_item)) {
-				copy = cJSON_CreateNumber(orig_item->valuedouble);
+				copy =
+				    cJSON_CreateNumber(orig_item->valuedouble);
 			} else if (cJSON_IsBool(orig_item)) {
-				copy = cJSON_CreateBool(cJSON_IsTrue(orig_item));
+				copy =
+				    cJSON_CreateBool(cJSON_IsTrue(orig_item));
 			} else {
 				copy = cJSON_CreateNull();
 			}
@@ -644,18 +651,24 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 			int array_size = cJSON_GetArraySize(diff_item);
 			if (array_size == 1) {
 				/* Addition */
-				cJSON *src_val = cJSON_GetArrayItem(diff_item, 0);
+				cJSON *src_val =
+				    cJSON_GetArrayItem(diff_item, 0);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(src_val);
+					new_val = cJSON_CreateObjectReference(
+					    src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val = cJSON_CreateArrayReference(src_val);
+					new_val =
+					    cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
-					new_val = cJSON_CreateString(src_val->valuestring);
+					new_val = cJSON_CreateString(
+					    src_val->valuestring);
 				} else if (cJSON_IsNumber(src_val)) {
-					new_val = cJSON_CreateNumber(src_val->valuedouble);
+					new_val = cJSON_CreateNumber(
+					    src_val->valuedouble);
 				} else if (cJSON_IsBool(src_val)) {
-					new_val = cJSON_CreateBool(cJSON_IsTrue(src_val));
+					new_val = cJSON_CreateBool(
+					    cJSON_IsTrue(src_val));
 				} else {
 					new_val = cJSON_CreateNull();
 				}
@@ -675,18 +688,24 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 				}
 			} else if (array_size == 2) {
 				/* Replacement */
-				cJSON *src_val = cJSON_GetArrayItem(diff_item, 1);
+				cJSON *src_val =
+				    cJSON_GetArrayItem(diff_item, 1);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(src_val);
+					new_val = cJSON_CreateObjectReference(
+					    src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val = cJSON_CreateArrayReference(src_val);
+					new_val =
+					    cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
-					new_val = cJSON_CreateString(src_val->valuestring);
+					new_val = cJSON_CreateString(
+					    src_val->valuestring);
 				} else if (cJSON_IsNumber(src_val)) {
-					new_val = cJSON_CreateNumber(src_val->valuedouble);
+					new_val = cJSON_CreateNumber(
+					    src_val->valuedouble);
 				} else if (cJSON_IsBool(src_val)) {
-					new_val = cJSON_CreateBool(cJSON_IsTrue(src_val));
+					new_val = cJSON_CreateBool(
+					    cJSON_IsTrue(src_val));
 				} else {
 					new_val = cJSON_CreateNull();
 				}
@@ -836,9 +855,11 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 			} else if (cJSON_IsArray(original)) {
 				return cJSON_CreateArrayReference(original);
 			} else if (cJSON_IsString(original)) {
-				return cJSON_CreateString(original->valuestring);
+				return cJSON_CreateString(
+				    original->valuestring);
 			} else if (cJSON_IsNumber(original)) {
-				return cJSON_CreateNumber(original->valuedouble);
+				return cJSON_CreateNumber(
+				    original->valuedouble);
 			} else if (cJSON_IsBool(original)) {
 				return cJSON_CreateBool(cJSON_IsTrue(original));
 			} else {
@@ -857,20 +878,26 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 		while (orig_item) {
 			cJSON *copy_item;
 			if (cJSON_IsObject(orig_item)) {
-				copy_item = cJSON_CreateObjectReference(orig_item);
+				copy_item =
+				    cJSON_CreateObjectReference(orig_item);
 			} else if (cJSON_IsArray(orig_item)) {
-				copy_item = cJSON_CreateArrayReference(orig_item);
+				copy_item =
+				    cJSON_CreateArrayReference(orig_item);
 			} else if (cJSON_IsString(orig_item)) {
-				copy_item = cJSON_CreateString(orig_item->valuestring);
+				copy_item =
+				    cJSON_CreateString(orig_item->valuestring);
 			} else if (cJSON_IsNumber(orig_item)) {
-				copy_item = cJSON_CreateNumber(orig_item->valuedouble);
+				copy_item =
+				    cJSON_CreateNumber(orig_item->valuedouble);
 			} else if (cJSON_IsBool(orig_item)) {
-				copy_item = cJSON_CreateBool(cJSON_IsTrue(orig_item));
+				copy_item =
+				    cJSON_CreateBool(cJSON_IsTrue(orig_item));
 			} else {
 				copy_item = cJSON_CreateNull();
 			}
 			if (copy_item) {
-				cJSON_AddItemToObject(result, orig_item->string, copy_item);
+				cJSON_AddItemToObject(result, orig_item->string,
+				                      copy_item);
 			}
 			orig_item = orig_item->next;
 		}
@@ -887,48 +914,62 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 			int array_size = cJSON_GetArraySize(diff_item);
 			if (array_size == 1) {
 				/* Addition */
-				cJSON *src_val = cJSON_GetArrayItem(diff_item, 0);
+				cJSON *src_val =
+				    cJSON_GetArrayItem(diff_item, 0);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(src_val);
+					new_val = cJSON_CreateObjectReference(
+					    src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val = cJSON_CreateArrayReference(src_val);
+					new_val =
+					    cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
-					new_val = cJSON_CreateString(src_val->valuestring);
+					new_val = cJSON_CreateString(
+					    src_val->valuestring);
 				} else if (cJSON_IsNumber(src_val)) {
-					new_val = cJSON_CreateNumber(src_val->valuedouble);
+					new_val = cJSON_CreateNumber(
+					    src_val->valuedouble);
 				} else if (cJSON_IsBool(src_val)) {
-					new_val = cJSON_CreateBool(cJSON_IsTrue(src_val));
+					new_val = cJSON_CreateBool(
+					    cJSON_IsTrue(src_val));
 				} else {
 					new_val = cJSON_CreateNull();
 				}
 				if (new_val) {
 					cJSON_DeleteItemFromObject(result, key);
-					cJSON_AddItemToObject(result, key, new_val);
+					cJSON_AddItemToObject(result, key,
+					                      new_val);
 				}
 			} else if (array_size == 3) {
 				/* Deletion - remove key */
 				cJSON_DeleteItemFromObject(result, key);
 			} else if (array_size == 2) {
 				/* Replacement */
-				cJSON *src_val = cJSON_GetArrayItem(diff_item, 1);
+				cJSON *src_val =
+				    cJSON_GetArrayItem(diff_item, 1);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(src_val);
+					new_val = cJSON_CreateObjectReference(
+					    src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val = cJSON_CreateArrayReference(src_val);
+					new_val =
+					    cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
-					new_val = cJSON_CreateString(src_val->valuestring);
+					new_val = cJSON_CreateString(
+					    src_val->valuestring);
 				} else if (cJSON_IsNumber(src_val)) {
-					new_val = cJSON_CreateNumber(src_val->valuedouble);
+					new_val = cJSON_CreateNumber(
+					    src_val->valuedouble);
 				} else if (cJSON_IsBool(src_val)) {
-					new_val = cJSON_CreateBool(cJSON_IsTrue(src_val));
+					new_val = cJSON_CreateBool(
+					    cJSON_IsTrue(src_val));
 				} else {
 					new_val = cJSON_CreateNull();
 				}
 				if (new_val) {
 					cJSON_DeleteItemFromObject(result, key);
-					cJSON_AddItemToObject(result, key, new_val);
+					cJSON_AddItemToObject(result, key,
+					                      new_val);
 				}
 			}
 		} else {

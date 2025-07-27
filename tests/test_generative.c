@@ -10,8 +10,6 @@
 #include <string.h>
 #include <time.h>
 
-
-
 /* Simple PRNG for reproducible testing */
 static unsigned long rng_state = 12345;
 
@@ -82,11 +80,11 @@ static cJSON *generate_random_object(int depth, int max_depth)
 	int num_fields = rand_int(0, 5);
 	for (int i = 0; i < num_fields; i++) {
 		char key[32];
-		if (__STDC_LIB_EXT1__) {
-			snprintf_s(key, sizeof(key), "key_%d", i);
-		} else {
-			snprintf(key, sizeof(key), "key_%d", i);
-		}
+#ifdef __STDC_LIB_EXT1__
+		snprintf_s(key, sizeof(key), "key_%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+		snprintf(key, sizeof(key), "key_%d", i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 
 		cJSON *value = generate_random_value(depth + 1, max_depth);
 		if (value) {
@@ -187,22 +185,28 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 10) {
-					if (__STDC_LIB_EXT1__) {
-						memcpy_s(new_str, len + 10, original->valuestring, copy_len + 1);
-					} else {
-						memcpy(new_str, original->valuestring, copy_len + 1);
-					}
+#ifdef __STDC_LIB_EXT1__
+					memcpy_s(new_str, len + 10,
+					         original->valuestring,
+					         copy_len + 1);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+					memcpy(new_str, original->valuestring,
+					       copy_len + 1);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 					if (len > 0 && rand_double() < 0.5) {
 						/* Change one character */
-						new_str[rand_int(0, (int)len - 1)] =
+						new_str[rand_int(0, (int)len -
+						                        1)] =
 						    (char)rand_int(32, 126);
 					}
 					if (rand_double() < 0.3) {
 						/* Append character */
-						new_str[len] = (char)rand_int(32, 126);
+						new_str[len] =
+						    (char)rand_int(32, 126);
 						new_str[len + 1] = '\0';
 					}
-					cJSON *result = cJSON_CreateString(new_str);
+					cJSON *result =
+					    cJSON_CreateString(new_str);
 					free(new_str);
 					return result;
 				} else {
@@ -272,11 +276,13 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 		/* Sometimes add new fields */
 		if (rand_double() < 0.3) {
 			char new_key[32];
-			if (__STDC_LIB_EXT1__) {
-				snprintf_s(new_key, sizeof(new_key), "mut_%d", rand_int(1000, 9999));
-			} else {
-				snprintf(new_key, sizeof(new_key), "mut_%d", rand_int(1000, 9999));
-			}
+#ifdef __STDC_LIB_EXT1__
+			snprintf_s(new_key, sizeof(new_key), "mut_%d",
+			           rand_int(1000, 9999));
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+			snprintf(new_key, sizeof(new_key), "mut_%d",
+			         rand_int(1000, 9999));
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 			cJSON *new_value = generate_random_value(0, 3);
 			if (new_value) {
 				cJSON_AddItemToObject(new_object, new_key,
@@ -336,23 +342,26 @@ static bool test_patch_roundtrip(const cJSON *json1, const cJSON *json2)
 	bool result = false;
 
 	if (patched) {
-		/* Use loose equality to handle floating point precision and reference issues */
+		/* Use loose equality to handle floating point precision and
+		 * reference issues */
 		result = json_value_equal(patched, json2, false);
-		
+
 		/* If loose equality fails, check for acceptable differences */
 		if (!result) {
-			/* For debugging: print the actual vs expected when they differ */
+			/* For debugging: print the actual vs expected when they
+			 * differ */
 			if (getenv("DEBUG_DIFF")) {
 				char *patched_str = cJSON_Print(patched);
 				char *expected_str = cJSON_Print(json2);
-				printf("PATCH MISMATCH:\nExpected: %s\nActual: %s\n", 
+				printf("PATCH MISMATCH:\nExpected: %s\nActual: "
+				       "%s\n",
 				       expected_str ? expected_str : "NULL",
 				       patched_str ? patched_str : "NULL");
 				free(patched_str);
 				free(expected_str);
 			}
 		}
-		
+
 		cJSON_Delete(patched);
 	}
 
@@ -523,12 +532,13 @@ static void run_generative_test_suite(int num_tests, unsigned long seed)
 
 	double pass_rate = 100.0 * passed / total;
 	if (pass_rate < 90.0) {
-		printf(
-		    "GENERATIVE TESTS FAILED: %d property violations found (%.1f%% pass rate)\n",
-		    total - passed, pass_rate);
+		printf("GENERATIVE TESTS FAILED: %d property violations found "
+		       "(%.1f%% pass rate)\n",
+		       total - passed, pass_rate);
 		exit(1);
 	} else {
-		printf("Generative tests passed with %.1f%% success rate!\n", pass_rate);
+		printf("Generative tests passed with %.1f%% success rate!\n",
+		       pass_rate);
 	}
 }
 
@@ -565,7 +575,9 @@ static void test_edge_cases(void)
 		assert(test_diff_creates_valid_diff(json1, json2));
 		bool roundtrip_ok = test_patch_roundtrip(json1, json2);
 		if (!roundtrip_ok) {
-			printf("WARNING: patch_roundtrip failed for %s (this may be expected for complex cases)\n", edge_cases[i].name);
+			printf("WARNING: patch_roundtrip failed for %s (this "
+			       "may be expected for complex cases)\n",
+			       edge_cases[i].name);
 		}
 		assert(test_self_diff_is_null(json1));
 		assert(test_self_diff_is_null(json2));

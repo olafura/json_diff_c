@@ -9,9 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-
-
 /* Simple PRNG for fuzzer-driven generation */
 static unsigned long fuzz_rng_state = 12345;
 
@@ -29,7 +26,6 @@ static int fuzz_rand_int(int min, int max)
 		return min;
 	return min + (int)(fuzz_rand() % (unsigned long)(max - min + 1));
 }
-
 
 /* Generate random JSON using fuzzer input as seed */
 static cJSON *fuzz_generate_json(const uint8_t *data, size_t size,
@@ -80,11 +76,11 @@ static cJSON *fuzz_generate_object(const uint8_t *data, size_t size, int depth,
 
 	for (int i = 0; i < num_fields && chunk_size > 0; i++) {
 		char key[32];
-		if (__STDC_LIB_EXT1__) {
-			snprintf_s(key, sizeof(key), "k%d", i);
-		} else {
-			snprintf(key, sizeof(key), "k%d", i);
-		}
+#ifdef __STDC_LIB_EXT1__
+		snprintf_s(key, sizeof(key), "k%d", i);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+		snprintf(key, sizeof(key), "k%d", i);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 
 		size_t offset = (size_t)i * chunk_size;
 		if (offset < size) {
@@ -129,11 +125,11 @@ static cJSON *fuzz_generate_json(const uint8_t *data, size_t size,
 	{
 		double num = 0.0;
 		if (size >= sizeof(double)) {
-			if (__STDC_LIB_EXT1__) {
-				memcpy_s(&num, sizeof(double), data, sizeof(double));
-			} else {
-				memcpy(&num, data, sizeof(double));
-			}
+#ifdef __STDC_LIB_EXT1__
+			memcpy_s(&num, sizeof(double), data, sizeof(double));
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+			memcpy(&num, data, sizeof(double));
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 			/* Clamp to reasonable range to avoid inf/nan issues in
 			 * tests */
 			if (num != num || num > 1e10 || num < -1e10) {
@@ -218,17 +214,21 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 1) {
-					if (__STDC_LIB_EXT1__) {
-						memcpy_s(new_str, len + 2, original->valuestring, copy_len + 1);
-					} else {
-						memcpy(new_str, original->valuestring, copy_len + 1);
-					}
+#ifdef __STDC_LIB_EXT1__
+					memcpy_s(new_str, len + 2,
+					         original->valuestring,
+					         copy_len + 1);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+					memcpy(new_str, original->valuestring,
+					       copy_len + 1);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 					if (len > 0 && size > 1) {
 						/* Modify one character */
 						new_str[data[1] % len] =
 						    (char)((data[1] % 95) + 32);
 					}
-					cJSON *result = cJSON_CreateString(new_str);
+					cJSON *result =
+					    cJSON_CreateString(new_str);
 					free(new_str);
 					return result;
 				} else {
@@ -423,13 +423,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		char *json2_str = malloc(size - split_point + 1);
 
 		if (json1_str && json2_str) {
-			if (__STDC_LIB_EXT1__) {
-				memcpy_s(json1_str, split_point + 1, data, split_point);
-				memcpy_s(json2_str, size - split_point + 1, data + split_point, size - split_point);
-			} else {
-				memcpy(json1_str, data, split_point);
-				memcpy(json2_str, data + split_point, size - split_point);
-			}
+#ifdef __STDC_LIB_EXT1__
+			memcpy_s(json1_str, split_point + 1, data, split_point);
+			memcpy_s(json2_str, size - split_point + 1,
+			         data + split_point, size - split_point);
+#else // NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
+			memcpy(json1_str, data, split_point);
+			memcpy(json2_str, data + split_point,
+			       size - split_point);
+#endif // NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 
 			json1_str[split_point] = '\0';
 			json2_str[size - split_point] = '\0';
@@ -440,8 +442,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 			if (raw_json1 && raw_json2) {
 				/* Test with raw parsed JSON */
-				fuzz_test_patch_roundtrip(raw_json1,
-				                          raw_json2);
+				fuzz_test_patch_roundtrip(raw_json1, raw_json2);
 				fuzz_test_self_diff_is_null(raw_json1);
 				fuzz_test_self_diff_is_null(raw_json2);
 			}

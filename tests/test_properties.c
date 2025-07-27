@@ -76,17 +76,31 @@ static void test_number_corruption_property(void)
 			/* Test roundtrip property */
 			cJSON *patched = json_patch(obj1, diff);
 			assert(patched != NULL);
-			/* For numbers, allow small floating point differences */
+			/* For numbers, allow small floating point differences
+			 */
 			if (cJSON_IsObject(obj2)) {
-				cJSON *patched_val = cJSON_GetObjectItem(patched, "value");
-				cJSON *expected_val = cJSON_GetObjectItem(obj2, "value");
-				if (patched_val && expected_val && cJSON_IsNumber(patched_val) && cJSON_IsNumber(expected_val)) {
-					/* Use extremely lenient comparison for floating point numbers */
-					double diff_val = fabs(patched_val->valuedouble - expected_val->valuedouble);
-					double tolerance = fmax(10.0, fmax(fabs(patched_val->valuedouble), fabs(expected_val->valuedouble)) * 1e-1);
+				cJSON *patched_val =
+				    cJSON_GetObjectItem(patched, "value");
+				cJSON *expected_val =
+				    cJSON_GetObjectItem(obj2, "value");
+				if (patched_val && expected_val &&
+				    cJSON_IsNumber(patched_val) &&
+				    cJSON_IsNumber(expected_val)) {
+					/* Use extremely lenient comparison for
+					 * floating point numbers */
+					double diff_val =
+					    fabs(patched_val->valuedouble -
+					         expected_val->valuedouble);
+					double tolerance = fmax(
+					    10.0,
+					    fmax(fabs(patched_val->valuedouble),
+					         fabs(expected_val
+					                  ->valuedouble)) *
+					        1e-1);
 					assert(diff_val < tolerance);
 				} else {
-					assert(json_value_equal(patched, obj2, false));
+					assert(json_value_equal(patched, obj2,
+					                        false));
 				}
 			} else {
 				assert(json_value_equal(patched, obj2, false));
