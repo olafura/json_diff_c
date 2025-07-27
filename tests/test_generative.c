@@ -10,41 +10,6 @@
 #include <string.h>
 #include <time.h>
 
-/* Simple implementations for systems without Annex K */
-#include <stdarg.h>
-
-/* Declare C11 Annex K secure functions if not available */
-#ifndef __STDC_LIB_EXT1__
-typedef size_t rsize_t;
-typedef int errno_t;
-
-errno_t snprintf_s(char *restrict s, rsize_t n, const char *restrict format, ...);
-errno_t vsnprintf_s(char *restrict s, rsize_t n, const char *restrict format, va_list args);
-errno_t memcpy_s(void *restrict s1, rsize_t s1max, const void *restrict s2, rsize_t n);
-errno_t snprintf_s(char *restrict s, rsize_t n, const char *restrict format, ...)
-{
-    if (!s || n == 0) return EINVAL;
-    va_list args;
-    va_start(args, format);
-    int result = vsnprintf_s(s, n, format, args);
-    va_end(args);
-    return (result >= 0 && (size_t)result < n) ? 0 : ERANGE;
-}
-
-errno_t vsnprintf_s(char *restrict s, rsize_t n, const char *restrict format, va_list args)
-{
-    if (!s || n == 0) return EINVAL;
-    int result = vsnprintf(s, n, format, args);
-    return (result >= 0 && (size_t)result < n) ? 0 : ERANGE;
-}
-
-errno_t memcpy_s(void *restrict s1, rsize_t s1max, const void *restrict s2, rsize_t n)
-{
-    if (!s1 || !s2 || s1max < n) return EINVAL;
-    memcpy(s1, s2, n);
-    return 0;
-}
-#endif
 
 /* Simple PRNG for reproducible testing */
 static unsigned long rng_state = 12345;
