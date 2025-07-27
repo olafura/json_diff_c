@@ -9,6 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef __STDC_LIB_EXT1__
+#define snprintf_s(buf, bufsz, fmt, ...) snprintf(buf, bufsz, fmt, __VA_ARGS__)
+#define memcpy_s(dest, destsz, src, count) memcpy(dest, src, count)
+#endif
+
 
 
 /* Simple PRNG for fuzzer-driven generation */

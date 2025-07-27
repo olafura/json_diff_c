@@ -10,6 +10,11 @@
 #include <string.h>
 #include <time.h>
 
+#ifndef __STDC_LIB_EXT1__
+#define snprintf_s(buf, bufsz, fmt, ...) snprintf(buf, bufsz, fmt, __VA_ARGS__)
+#define memcpy_s(dest, destsz, src, count) memcpy(dest, src, count)
+#endif
+
 
 /* Simple PRNG for reproducible testing */
 static unsigned long rng_state = 12345;
