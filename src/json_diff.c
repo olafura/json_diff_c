@@ -355,7 +355,11 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, add_array);
 					/* Deletion at index */
+#ifdef __STDC_LIB_EXT1__
 					snprintf_s(index_str, sizeof(index_str), "_%d", i);
+#else
+					snprintf(index_str, sizeof(index_str), "_%d", i);
+#endif
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, del_array);
 					has_changes = true;
