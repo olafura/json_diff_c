@@ -9,17 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef rsize_t
-typedef size_t rsize_t;
-#endif
-
-#ifndef errno_t
-typedef int errno_t;
-#endif
-
-/* Declare memcpy_s as per C11 Annex K safe function */
-errno_t memcpy_s(void *restrict dest, rsize_t destmax, const void *restrict src,
-                 rsize_t n);
 
 /* Simple PRNG for fuzzer-driven generation */
 static unsigned long fuzz_rng_state = 12345;
@@ -419,32 +408,29 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		char *json1_str = malloc(split_point + 1);
 		char *json2_str = malloc(size - split_point + 1);
 
-		if (json1_str && json2_str &&
-		    split_point <= split_point + 1 &&
-		    size - split_point <= size - split_point + 1) {
+		if (json1_str && json2_str) {
 			(void)memcpy(json1_str, data, split_point);
 			(void)memcpy(json2_str, data + split_point, size - split_point);
 
-				json1_str[split_point] = '\0';
-				json2_str[size - split_point] = '\0';
+			json1_str[split_point] = '\0';
+			json2_str[size - split_point] = '\0';
 
-				/* Try to parse raw fuzzer input as JSON */
-				cJSON *raw_json1 = cJSON_Parse(json1_str);
-				cJSON *raw_json2 = cJSON_Parse(json2_str);
+			/* Try to parse raw fuzzer input as JSON */
+			cJSON *raw_json1 = cJSON_Parse(json1_str);
+			cJSON *raw_json2 = cJSON_Parse(json2_str);
 
-				if (raw_json1 && raw_json2) {
-					/* Test with raw parsed JSON */
-					fuzz_test_patch_roundtrip(raw_json1,
-					                          raw_json2);
-					fuzz_test_self_diff_is_null(raw_json1);
-					fuzz_test_self_diff_is_null(raw_json2);
-				}
-
-				if (raw_json1)
-					cJSON_Delete(raw_json1);
-				if (raw_json2)
-					cJSON_Delete(raw_json2);
+			if (raw_json1 && raw_json2) {
+				/* Test with raw parsed JSON */
+				fuzz_test_patch_roundtrip(raw_json1,
+				                          raw_json2);
+				fuzz_test_self_diff_is_null(raw_json1);
+				fuzz_test_self_diff_is_null(raw_json2);
 			}
+
+			if (raw_json1)
+				cJSON_Delete(raw_json1);
+			if (raw_json2)
+				cJSON_Delete(raw_json2);
 		}
 
 		free(json1_str);
