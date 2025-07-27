@@ -10,8 +10,10 @@
 #include <string.h>
 
 #ifndef __STDC_LIB_EXT1__
+// NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 #define snprintf_s(buf, bufsz, fmt, ...) snprintf(buf, bufsz, fmt, __VA_ARGS__)
 #define memcpy_s(dest, destsz, src, count) memcpy(dest, src, count)
+// NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
 #endif
 
 
