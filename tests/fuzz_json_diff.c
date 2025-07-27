@@ -9,12 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef __STDC_LIB_EXT1__
-// NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-#define snprintf_s(buf, bufsz, fmt, ...) snprintf(buf, bufsz, fmt, __VA_ARGS__)
-#define memcpy_s(dest, destsz, src, count) memcpy(dest, src, count)
-// NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-#endif
 
 
 
@@ -86,7 +80,11 @@ static cJSON *fuzz_generate_object(const uint8_t *data, size_t size, int depth,
 
 	for (int i = 0; i < num_fields && chunk_size > 0; i++) {
 		char key[32];
+#ifdef __STDC_LIB_EXT1__
 		snprintf_s(key, sizeof(key), "k%d", i);
+#else
+		snprintf(key, sizeof(key), "k%d", i);
+#endif
 
 		size_t offset = (size_t)i * chunk_size;
 		if (offset < size) {
@@ -131,7 +129,11 @@ static cJSON *fuzz_generate_json(const uint8_t *data, size_t size,
 	{
 		double num = 0.0;
 		if (size >= sizeof(double)) {
+	#ifdef __STDC_LIB_EXT1__
 			memcpy_s(&num, sizeof(double), data, sizeof(double));
+	#else
+			memcpy(&num, data, sizeof(double));
+	#endif
 			/* Clamp to reasonable range to avoid inf/nan issues in
 			 * tests */
 			if (num != num || num > 1e10 || num < -1e10) {
@@ -417,8 +419,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		char *json2_str = malloc(size - split_point + 1);
 
 		if (json1_str && json2_str) {
+	#ifdef __STDC_LIB_EXT1__
 			memcpy_s(json1_str, split_point + 1, data, split_point);
 			memcpy_s(json2_str, size - split_point + 1, data + split_point, size - split_point);
+	#else
+			memcpy(json1_str, data, split_point);
+			memcpy(json2_str, data + split_point, size - split_point);
+	#endif
 
 			json1_str[split_point] = '\0';
 			json2_str[size - split_point] = '\0';

@@ -10,12 +10,6 @@
 #include <string.h>
 #include <time.h>
 
-#ifndef __STDC_LIB_EXT1__
-// NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-#define snprintf_s(buf, bufsz, fmt, ...) snprintf(buf, bufsz, fmt, __VA_ARGS__)
-#define memcpy_s(dest, destsz, src, count) memcpy(dest, src, count)
-// NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-#endif
 
 
 /* Simple PRNG for reproducible testing */
@@ -88,7 +82,11 @@ static cJSON *generate_random_object(int depth, int max_depth)
 	int num_fields = rand_int(0, 5);
 	for (int i = 0; i < num_fields; i++) {
 		char key[32];
+#ifdef __STDC_LIB_EXT1__
 		snprintf_s(key, sizeof(key), "key_%d", i);
+#else
+		snprintf(key, sizeof(key), "key_%d", i);
+#endif
 
 		cJSON *value = generate_random_value(depth + 1, max_depth);
 		if (value) {
@@ -189,7 +187,11 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 10) {
+#ifdef __STDC_LIB_EXT1__
 					memcpy_s(new_str, len + 10, original->valuestring, copy_len + 1);
+#else
+					memcpy(new_str, original->valuestring, copy_len + 1);
+#endif
 					if (len > 0 && rand_double() < 0.5) {
 						/* Change one character */
 						new_str[rand_int(0, (int)len - 1)] =
@@ -270,7 +272,11 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 		/* Sometimes add new fields */
 		if (rand_double() < 0.3) {
 			char new_key[32];
+#ifdef __STDC_LIB_EXT1__
 			snprintf_s(new_key, sizeof(new_key), "mut_%d", rand_int(1000, 9999));
+#else
+			snprintf(new_key, sizeof(new_key), "mut_%d", rand_int(1000, 9999));
+#endif
 			cJSON *new_value = generate_random_value(0, 3);
 			if (new_value) {
 				cJSON_AddItemToObject(new_object, new_key,

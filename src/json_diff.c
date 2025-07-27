@@ -8,12 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef __STDC_LIB_EXT1__
-// NOLINTBEGIN(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-#define snprintf_s(buf, bufsz, fmt, ...) snprintf(buf, bufsz, fmt, __VA_ARGS__)
-#define memcpy_s(dest, destsz, src, count) memcpy(dest, src, count)
-// NOLINTEND(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-#endif
 
 
 /* Include for arena allocator */
@@ -333,7 +327,11 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				cJSON *sub_diff =
 				    json_diff(left_item, right_item, opts);
 				if (sub_diff) {
+#ifdef __STDC_LIB_EXT1__
 					snprintf_s(index_str, sizeof(index_str), "%d", i);
+#else
+					snprintf(index_str, sizeof(index_str), "%d", i);
+#endif
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, sub_diff);
 					has_changes = true;
@@ -347,8 +345,13 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				    create_deletion_array(left_item);
 				if (add_array && del_array) {
 					/* Addition at index */
+#ifdef __STDC_LIB_EXT1__
 					(void)snprintf_s(index_str, sizeof(index_str),
 					         "%d", i);
+#else
+					(void)snprintf(index_str, sizeof(index_str),
+					         "%d", i);
+#endif
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, add_array);
 					/* Deletion at index */
@@ -373,7 +376,11 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	while (left_item) {
 		cJSON *del_array = create_deletion_array(left_item);
 		if (del_array) {
+#ifdef __STDC_LIB_EXT1__
 			snprintf_s(index_str, sizeof(index_str), "_%d", i);
+#else
+			snprintf(index_str, sizeof(index_str), "_%d", i);
+#endif
 			cJSON_AddItemToObject(diff_obj, index_str, del_array);
 			has_changes = true;
 		}
@@ -385,7 +392,11 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	while (right_item) {
 		cJSON *ins_array = create_addition_array(right_item);
 		if (ins_array) {
+#ifdef __STDC_LIB_EXT1__
 			snprintf_s(index_str, sizeof(index_str), "%d", i);
+#else
+			snprintf(index_str, sizeof(index_str), "%d", i);
+#endif
 			cJSON_AddItemToObject(diff_obj, index_str, ins_array);
 			has_changes = true;
 		}
