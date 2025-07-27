@@ -218,7 +218,11 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 1) {
+#ifdef __STDC_LIB_EXT1__
 					memcpy_s(new_str, len + 2, original->valuestring, copy_len + 1);
+#else
+					memcpy(new_str, original->valuestring, copy_len + 1);
+#endif
 					if (len > 0 && size > 1) {
 						/* Modify one character */
 						new_str[data[1] % len] =
