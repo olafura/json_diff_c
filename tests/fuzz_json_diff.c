@@ -89,7 +89,7 @@ static cJSON *fuzz_generate_object(const uint8_t *data, size_t size, int depth,
 
 	for (int i = 0; i < num_fields && chunk_size > 0; i++) {
 		char key[32];
-		snprintf_s(key, sizeof(key), "k%d", i);
+		(void)snprintf(key, sizeof(key), "k%d", i);
 
 		size_t offset = (size_t)i * chunk_size;
 		if (offset < size) {
@@ -134,7 +134,7 @@ static cJSON *fuzz_generate_json(const uint8_t *data, size_t size,
 	{
 		double num = 0.0;
 		if (size >= sizeof(double)) {
-			memcpy_s(&num, sizeof(double), data, sizeof(double));
+			(void)memcpy(&num, data, sizeof(double));
 			/* Clamp to reasonable range to avoid inf/nan issues in
 			 * tests */
 			if (num != num || num > 1e10 || num < -1e10) {
@@ -219,7 +219,7 @@ static cJSON *fuzz_mutate_json(const cJSON *original, const uint8_t *data,
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 1) {
-					memcpy_s(new_str, len + 2, original->valuestring, copy_len + 1);
+					(void)memcpy(new_str, original->valuestring, copy_len + 1);
 					if (len > 0 && size > 1) {
 						/* Modify one character */
 						new_str[data[1] % len] =

@@ -325,7 +325,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 				cJSON *sub_diff =
 				    json_diff(left_item, right_item, opts);
 				if (sub_diff) {
-					snprintf_s(index_str, sizeof(index_str), "%d", i);
+					(void)snprintf(index_str, sizeof(index_str), "%d", i);
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, sub_diff);
 					has_changes = true;
@@ -344,7 +344,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, add_array);
 					/* Deletion at index */
-					snprintf_s(index_str, sizeof(index_str), "_%d", i);
+					(void)snprintf(index_str, sizeof(index_str), "_%d", i);
 					cJSON_AddItemToObject(
 					    diff_obj, index_str, del_array);
 					has_changes = true;
@@ -365,7 +365,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	while (left_item) {
 		cJSON *del_array = create_deletion_array(left_item);
 		if (del_array) {
-			snprintf_s(index_str, sizeof(index_str), "_%d", i);
+			(void)snprintf(index_str, sizeof(index_str), "_%d", i);
 			cJSON_AddItemToObject(diff_obj, index_str, del_array);
 			has_changes = true;
 		}
@@ -377,7 +377,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	while (right_item) {
 		cJSON *ins_array = create_addition_array(right_item);
 		if (ins_array) {
-			snprintf_s(index_str, sizeof(index_str), "%d", i);
+			(void)snprintf(index_str, sizeof(index_str), "%d", i);
 			cJSON_AddItemToObject(diff_obj, index_str, ins_array);
 			has_changes = true;
 		}

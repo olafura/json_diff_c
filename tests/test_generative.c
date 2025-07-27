@@ -79,7 +79,7 @@ static cJSON *generate_random_object(int depth, int max_depth)
 	int num_fields = rand_int(0, 5);
 	for (int i = 0; i < num_fields; i++) {
 		char key[32];
-		snprintf_s(key, sizeof(key), "key_%d", i);
+		(void)snprintf(key, sizeof(key), "key_%d", i);
 
 		cJSON *value = generate_random_value(depth + 1, max_depth);
 		if (value) {
@@ -180,7 +180,7 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 			if (new_str) {
 				size_t copy_len = strlen(original->valuestring);
 				if (copy_len < len + 10) {
-					memcpy_s(new_str, len + 10, original->valuestring, copy_len + 1);
+					(void)memcpy(new_str, original->valuestring, copy_len + 1);
 					if (len > 0 && rand_double() < 0.5) {
 						/* Change one character */
 						new_str[rand_int(0, (int)len - 1)] =
@@ -261,7 +261,7 @@ static cJSON *mutate_json_value(const cJSON *original, double mutation_rate)
 		/* Sometimes add new fields */
 		if (rand_double() < 0.3) {
 			char new_key[32];
-			snprintf_s(new_key, sizeof(new_key), "mut_%d",
+			(void)snprintf(new_key, sizeof(new_key), "mut_%d",
 			         rand_int(1000, 9999));
 			cJSON *new_value = generate_random_value(0, 3);
 			if (new_value) {
