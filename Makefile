@@ -4,11 +4,28 @@ BUILD_DIR := builddir
 
 .PHONY: all setup build test bench bench-medium bench-pipeline bench-parse bench-jsmn profile \
         install clean fuzz fuzz-long fuzz-custom tidy tidy-fix format format-check \
-        advanced-test gen-test-quick gen-test gen-test-extensive prop-test
+        advanced-test gen-test-quick gen-test gen-test-extensive prop-test build-theft clean-theft
 
 all: build
 
-setup:
+# Build theft library if submodule exists
+build-theft:
+	@if [ -d "vendor/theft" ] && [ -f "vendor/theft/Makefile" ]; then \
+		echo "Building theft library..."; \
+		cd vendor/theft && $(MAKE); \
+	else \
+		echo "theft submodule not found or not initialized"; \
+		echo "Run: git submodule update --init --recursive"; \
+	fi
+
+# Clean theft library build artifacts
+clean-theft:
+	@if [ -d "vendor/theft" ] && [ -f "vendor/theft/Makefile" ]; then \
+		echo "Cleaning theft library..."; \
+		cd vendor/theft && $(MAKE) clean; \
+	fi
+
+setup: build-theft
 	meson setup $(BUILD_DIR)
 
 build: setup
@@ -35,7 +52,7 @@ profile: build
 install: build
 	meson install -C $(BUILD_DIR)
 
-clean:
+clean: clean-theft
 	rm -rf $(BUILD_DIR)
 
 fuzz: build
