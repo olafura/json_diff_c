@@ -189,8 +189,10 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 
 	/* Use references for objects/arrays/strings, copy scalars */
 	cJSON *old_item = NULL;
-	if (cJSON_IsObject(old_val)) {
-		old_item = cJSON_CreateObjectReference(old_val);
+	if (!old_val) {
+		old_item = cJSON_CreateNull();
+	} else if (cJSON_IsObject(old_val)) {
+		old_item = cJSON_Duplicate(old_val, 1);
 	} else if (cJSON_IsArray(old_val)) {
 		old_item = cJSON_CreateArrayReference(old_val);
 	} else if (cJSON_IsString(old_val)) {
@@ -203,7 +205,9 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 		old_item = cJSON_CreateNull();
 	}
 	cJSON *new_item = NULL;
-	if (cJSON_IsObject(new_val)) {
+	if (!new_val) {
+		new_item = cJSON_CreateNull();
+	} else if (cJSON_IsObject(new_val)) {
 		new_item = cJSON_CreateObjectReference(new_val);
 	} else if (cJSON_IsArray(new_val)) {
 		new_item = cJSON_CreateArrayReference(new_val);
@@ -855,6 +859,14 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 		/* This is a change array [old_value, new_value] */
 		cJSON *new_val = cJSON_GetArrayItem(diff, 1);
 		if (cJSON_IsObject(new_val)) {
+			/* Handle object reference wrapper - if it has only one
+			 * child with empty key, unwrap it */
+			if (new_val->child && !new_val->child->next &&
+			    new_val->child->string &&
+			    strlen(new_val->child->string) == 0) {
+				return cJSON_CreateObjectReference(
+				    new_val->child);
+			}
 			return cJSON_CreateObjectReference(new_val);
 		} else if (cJSON_IsArray(new_val)) {
 			return cJSON_CreateArrayReference(new_val);
