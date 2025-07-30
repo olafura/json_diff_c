@@ -45,10 +45,15 @@ static void *arena_malloc(size_t size)
 		                    : size * 2;
 		if (newcap < size)
 			newcap = size * 2;
+		/* Prevent excessive memory usage */
+		if (newcap > MAX_ARENA_SIZE)
+			return NULL;
 		while (newcap < off + size) {
-			if (newcap > SIZE_MAX / 2)
+			if (newcap > SIZE_MAX / 2 || newcap > MAX_ARENA_SIZE)
 				return NULL;
 			newcap *= 2;
+			if (newcap > MAX_ARENA_SIZE)
+				return NULL;
 		}
 		char *newbuf = realloc(current_arena->buf, newcap);
 		if (!newbuf)
@@ -617,6 +622,7 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 				diff_item = diff_item->next;
 				continue;
 			}
+			/* Safe cast after bounds check */
 			int index = (int)index_long;
 			int *new_indices =
 			    realloc(delete_indices,
@@ -671,6 +677,7 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 			diff_item = diff_item->next;
 			continue;
 		}
+		/* Safe cast after bounds check */
 		int index = (int)index_long;
 		if (cJSON_IsArray(diff_item)) {
 			int array_size = cJSON_GetArraySize(diff_item);

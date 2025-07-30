@@ -5,6 +5,10 @@
 #include <cjson/cJSON.h>
 #include <stdbool.h>
 
+#ifndef MAX_ARENA_SIZE
+#define MAX_ARENA_SIZE (16 * 1024 * 1024)
+#endif
+
 /**
  * struct json_diff_arena - Arena for diff allocations
  * @buf: internal buffer for allocations

@@ -17,8 +17,15 @@ math_dep = meson.get_compiler('c').find_library('m', required : false)
 thread_dep = dependency('threads', required : false)
 
 # Global hardening flags
-add_project_arguments('-fstack-protector-strong', '-D_FORTIFY_SOURCE=2', language: 'c')
-add_project_link_arguments('-Wl,-z,relro', '-Wl,-z,now', language: 'c')
+hardening_args = [
+  '-fstack-protector-strong',
+  '-D_FORTIFY_SOURCE=2',
+  '-Wformat-security',
+  '-Werror=format-security',
+  '-fPIE'
+]
+add_project_arguments(hardening_args, language: 'c')
+add_project_link_arguments(['-Wl,-z,relro', '-Wl,-z,now', '-pie'], language: 'c')
 
 # Composite dependencies
 if thread_dep.found()
@@ -48,6 +55,17 @@ test_exe = executable('test_json_diff',
 
 # Register test
 test('json_diff_test', test_exe, workdir : meson.current_source_dir())
+
+# Security test executable
+security_test_exe = executable('test_security',
+  'tests/test_security.c',
+  link_with : json_diff_lib,
+  dependencies : base_deps,
+  install : false
+)
+
+# Register security test
+test('security_test', security_test_exe, workdir : meson.current_source_dir())
 
 # Profile test executable
 profile_exe = executable('test_profile',
