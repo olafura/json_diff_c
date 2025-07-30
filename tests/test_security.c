@@ -20,7 +20,7 @@
 
 /**
  * Security regression test suite for JSON Diff library
- * 
+ *
  * This test suite validates security fixes and prevents regressions
  * by testing edge cases and potential vulnerabilities.
  */
@@ -50,8 +50,10 @@ static void test_memory_dos_protection(void)
 	printf("Testing DoS protection against excessive memory usage...\n");
 
 	/* Test 1: Large input size rejection */
-	char *large_json1 = create_large_json_string(MAX_JSON_INPUT_SIZE + 1000);
-	char *large_json2 = create_large_json_string(MAX_JSON_INPUT_SIZE + 1000);
+	char *large_json1 =
+	    create_large_json_string(MAX_JSON_INPUT_SIZE + 1000);
+	char *large_json2 =
+	    create_large_json_string(MAX_JSON_INPUT_SIZE + 1000);
 
 	if (large_json1 && large_json2) {
 		cJSON *diff = json_diff_str(large_json1, large_json2, NULL);
@@ -97,7 +99,7 @@ static void test_integer_overflow_protection(void)
 	cJSON_AddItemToArray(original, cJSON_CreateString("item2"));
 
 	cJSON *result = json_patch(original, diff);
-	
+
 	/* Should either succeed or fail gracefully without crashing */
 	if (result) {
 		cJSON_Delete(result);
@@ -134,7 +136,7 @@ static void test_recursion_depth_limits(void)
 
 	/* Should handle excessive depth gracefully */
 	cJSON *diff = json_diff(deeply_nested1, deeply_nested2, NULL);
-	
+
 	/* May succeed or fail, but shouldn't crash */
 	if (diff) {
 		cJSON_Delete(diff);
@@ -158,10 +160,10 @@ static void test_null_pointer_safety(void)
 
 	/* Test value equality with nulls */
 	assert(json_value_equal(NULL, NULL, true) == true);
-	
+
 	cJSON *valid_json = cJSON_CreateObject();
 	cJSON_AddStringToObject(valid_json, "test", "value");
-	
+
 	assert(json_value_equal(NULL, valid_json, true) == false);
 	assert(json_value_equal(valid_json, NULL, true) == false);
 
@@ -181,29 +183,31 @@ static void test_malformed_json_handling(void)
 	printf("Testing malformed JSON handling...\n");
 
 	const char *malformed_inputs[] = {
-		"", /* Empty string */
-		"{", /* Unclosed object */
-		"}", /* Just closing brace */
-		"[", /* Unclosed array */
-		"]", /* Just closing bracket */
-		"{\"key\":}", /* Missing value */
-		"{\"key\": \"value\"", /* Missing closing brace */
-		"invalid", /* Not JSON at all */
-		"null", /* Valid but minimal */
-		"123.456.789", /* Invalid number */
-		"\"unclosed string", /* Unclosed string */
-		"{\"key\": \"value\",}", /* Trailing comma */
-		NULL
-	};
+	    "",                      /* Empty string */
+	    "{",                     /* Unclosed object */
+	    "}",                     /* Just closing brace */
+	    "[",                     /* Unclosed array */
+	    "]",                     /* Just closing bracket */
+	    "{\"key\":}",            /* Missing value */
+	    "{\"key\": \"value\"",   /* Missing closing brace */
+	    "invalid",               /* Not JSON at all */
+	    "null",                  /* Valid but minimal */
+	    "123.456.789",           /* Invalid number */
+	    "\"unclosed string",     /* Unclosed string */
+	    "{\"key\": \"value\",}", /* Trailing comma */
+	    NULL};
 
 	for (int i = 0; malformed_inputs[i] != NULL; i++) {
-		cJSON *diff = json_diff_str(malformed_inputs[i], "{\"test\": 1}", NULL);
-		/* Should handle gracefully - may succeed or fail but shouldn't crash */
+		cJSON *diff =
+		    json_diff_str(malformed_inputs[i], "{\"test\": 1}", NULL);
+		/* Should handle gracefully - may succeed or fail but shouldn't
+		 * crash */
 		if (diff) {
 			cJSON_Delete(diff);
 		}
 
-		diff = json_diff_str("{\"test\": 1}", malformed_inputs[i], NULL);
+		diff =
+		    json_diff_str("{\"test\": 1}", malformed_inputs[i], NULL);
 		if (diff) {
 			cJSON_Delete(diff);
 		}
@@ -245,7 +249,7 @@ static void test_string_edge_cases(void)
 		long_str[9999] = '\0';
 
 		cJSON *long_json1 = cJSON_CreateString(long_str);
-		
+
 		long_str[5000] = 'B'; /* Make it different */
 		cJSON *long_json2 = cJSON_CreateString(long_str);
 
@@ -310,7 +314,8 @@ int main(void)
 
 	printf("\n=====================================\n");
 	printf("All security tests passed! ✓\n");
-	printf("The library appears to be secure against tested vulnerabilities.\n");
+	printf("The library appears to be secure against tested "
+	       "vulnerabilities.\n");
 
 	return 0;
 }
