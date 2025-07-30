@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y meson ninja-build clang-tidy clang-format ripgrep
+    
+    - name: Setup build
+      run: make setup
+    
+    - name: Build
+      run: make build
+    
+    - name: Run tests
+      run: make test
+    
+    - name: Run property tests
+      run: make prop-test
+    
+    - name: Run quick generative tests
+      run: make gen-test-quick
+
+  format-and-lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y meson ninja-build clang-tidy clang-format ripgrep
+    
+    - name: Setup build
+      run: make setup
+    
+    - name: Check formatting
+      run: make format-check
+    
+    - name: Run clang-tidy
+      run: make tidy
+
+  advanced-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y meson ninja-build clang-tidy clang-format ripgrep
+    
+    - name: Setup build
+      run: make setup
+    
+    - name: Build
+      run: make build
+    
+    - name: Run advanced tests
+      run: make advanced-test
+    
+    - name: Run standard generative tests
+      run: make gen-test
+
+  benchmarks:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y meson ninja-build
+    
+    - name: Setup build
+      run: make setup
+    
+    - name: Build
+      run: make build
+    
+    - name: Run benchmarks
+      run: |
+        make bench-medium
+        make bench-parse
