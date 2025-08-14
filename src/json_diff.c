@@ -27,6 +27,7 @@ static __thread int json_patch_depth = 0;
 #define MAX_JSON_INPUT_SIZE (1024 * 1024)
 #endif
 
+
 static void *arena_malloc(size_t size)
 {
 	if (!current_arena)
@@ -192,7 +193,7 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 	if (!old_val) {
 		old_item = cJSON_CreateNull();
 	} else if (cJSON_IsObject(old_val)) {
-		old_item = cJSON_Duplicate(old_val, 1);
+		old_item = cJSON_CreateObjectReference(old_val);
 	} else if (cJSON_IsArray(old_val)) {
 		old_item = cJSON_CreateArrayReference(old_val);
 	} else if (cJSON_IsString(old_val)) {
@@ -691,11 +692,9 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 				    cJSON_GetArrayItem(diff_item, 0);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(
-					    src_val);
+					new_val = cJSON_CreateObjectReference(src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val =
-					    cJSON_CreateArrayReference(src_val);
+					new_val = cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
 					new_val = cJSON_CreateString(
 					    src_val->valuestring);
@@ -728,11 +727,9 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 				    cJSON_GetArrayItem(diff_item, 1);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(
-					    src_val);
+					new_val = cJSON_CreateObjectReference(src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val =
-					    cJSON_CreateArrayReference(src_val);
+					new_val = cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
 					new_val = cJSON_CreateString(
 					    src_val->valuestring);
@@ -970,11 +967,9 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 				    cJSON_GetArrayItem(diff_item, 0);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(
-					    src_val);
+					new_val = cJSON_CreateObjectReference(src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val =
-					    cJSON_CreateArrayReference(src_val);
+					new_val = cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
 					new_val = cJSON_CreateString(
 					    src_val->valuestring);
@@ -1001,11 +996,9 @@ cJSON *json_patch(const cJSON *original, const cJSON *diff)
 				    cJSON_GetArrayItem(diff_item, 1);
 				cJSON *new_val;
 				if (cJSON_IsObject(src_val)) {
-					new_val = cJSON_CreateObjectReference(
-					    src_val);
+					new_val = cJSON_CreateObjectReference(src_val);
 				} else if (cJSON_IsArray(src_val)) {
-					new_val =
-					    cJSON_CreateArrayReference(src_val);
+					new_val = cJSON_CreateArrayReference(src_val);
 				} else if (cJSON_IsString(src_val)) {
 					new_val = cJSON_CreateString(
 					    src_val->valuestring);

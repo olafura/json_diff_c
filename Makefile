@@ -100,3 +100,23 @@ gen-test-extensive: build
 prop-test: build
 	@echo "Running property tests..."
 	@./$(BUILD_DIR)/test_properties
+
+# jsondiffpatch compatibility tests
+test-js-compat: build
+	@echo "Running jsondiffpatch compatibility tests..."
+	@meson test js_compat_test -C $(BUILD_DIR)
+
+test-node-compare: build
+	@echo "Running Node.js comparison tests..."
+	@meson test node_compare_test -C $(BUILD_DIR)
+
+test-behavior: build
+	@echo "Running behavior verification tests..."
+	@meson test behavior_verification_test -C $(BUILD_DIR)
+
+test-js-compat-simple: build
+	@echo "Running simple JS compatibility test..."
+	@./$(BUILD_DIR)/test_js_compat_simple
+
+test-all-new: test-js-compat test-node-compare test-behavior test-js-compat-simple
+	@echo "All new JavaScript compatibility tests completed"

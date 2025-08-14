@@ -67,6 +67,47 @@ security_test_exe = executable('test_security',
 # Register security test
 test('security_test', security_test_exe, workdir : meson.current_source_dir())
 
+# jsondiffpatch compatibility test executable
+js_compat_test_exe = executable('test_js_compat',
+  'tests/test_js_compat.c',
+  link_with : json_diff_lib,
+  dependencies : base_deps,
+  install : false
+)
+
+# Register jsondiffpatch compatibility test
+test('js_compat_test', js_compat_test_exe, workdir : meson.current_source_dir())
+
+# Node.js comparison test executable (optional, requires Node.js)
+node_compare_test_exe = executable('test_node_compare',
+  'tests/test_node_compare.c',
+  link_with : json_diff_lib,
+  dependencies : base_deps,
+  install : false
+)
+
+# Register Node.js comparison test (runs but may skip if Node.js unavailable)
+test('node_compare_test', node_compare_test_exe, workdir : meson.current_source_dir())
+
+# Simple jsondiffpatch compatibility test (for debugging)
+simple_js_compat_test_exe = executable('test_js_compat_simple',
+  'tests/test_js_compat_simple.c',
+  link_with : json_diff_lib,
+  dependencies : base_deps,
+  install : false
+)
+
+# Behavior verification test 
+behavior_verification_exe = executable('test_behavior_verification',
+  'tests/test_behavior_verification.c',
+  link_with : json_diff_lib,
+  dependencies : base_deps,
+  install : false
+)
+
+# Register behavior verification test
+test('behavior_verification_test', behavior_verification_exe, workdir : meson.current_source_dir())
+
 # Property-based test executable using theft
 # Only build if theft library is available
 theft_lib_path = join_paths(meson.current_source_dir(), 'vendor/theft/build')
