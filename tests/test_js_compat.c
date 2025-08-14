@@ -243,6 +243,7 @@ static void test_js_compat_case(const struct js_compat_test *test_case)
 			cJSON_Delete(diff);
 			cJSON_Delete(json_a);
 			cJSON_Delete(json_b);
+			assert(false);
 			return;
 		}
 
