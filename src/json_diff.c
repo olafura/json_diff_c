@@ -27,6 +27,76 @@ static __thread int json_patch_depth = 0;
 #define MAX_JSON_INPUT_SIZE (1024 * 1024)
 #endif
 
+/* Create a shallow clone of a value:
+ * - Objects/arrays: new container with children added as references
+ * - Primitives: new primitive with same value
+ */
+static cJSON *clone_shallow(const cJSON *v)
+{
+	if (!v)
+		return cJSON_CreateNull();
+	if (cJSON_IsObject(v)) {
+		cJSON *o = cJSON_CreateObject();
+		if (!o)
+			return NULL;
+		for (const cJSON *ch = v->child; ch; ch = ch->next) {
+			cJSON *val = NULL;
+			if (cJSON_IsObject(ch))
+				val = cJSON_CreateObjectReference(ch);
+			else if (cJSON_IsArray(ch))
+				val = cJSON_CreateArrayReference(ch);
+			else if (cJSON_IsString(ch))
+				val = cJSON_CreateString(ch->valuestring);
+			else if (cJSON_IsNumber(ch))
+				val = cJSON_CreateNumber(ch->valuedouble);
+			else if (cJSON_IsBool(ch))
+				val = cJSON_CreateBool(cJSON_IsTrue(ch));
+			else
+				val = cJSON_CreateNull();
+			if (!val) {
+				cJSON_Delete(o);
+				return NULL;
+			}
+			cJSON_AddItemToObject(o, ch->string ? ch->string : "",
+			                      val);
+		}
+		return o;
+	}
+	if (cJSON_IsArray(v)) {
+		cJSON *a = cJSON_CreateArray();
+		if (!a)
+			return NULL;
+		for (const cJSON *ch = v->child; ch; ch = ch->next) {
+			cJSON *val = NULL;
+			if (cJSON_IsObject(ch))
+				val = cJSON_CreateObjectReference(ch);
+			else if (cJSON_IsArray(ch))
+				val = cJSON_CreateArrayReference(ch);
+			else if (cJSON_IsString(ch))
+				val = cJSON_CreateString(ch->valuestring);
+			else if (cJSON_IsNumber(ch))
+				val = cJSON_CreateNumber(ch->valuedouble);
+			else if (cJSON_IsBool(ch))
+				val = cJSON_CreateBool(cJSON_IsTrue(ch));
+			else
+				val = cJSON_CreateNull();
+			if (!val) {
+				cJSON_Delete(a);
+				return NULL;
+			}
+			cJSON_AddItemToArray(a, val);
+		}
+		return a;
+	}
+	if (cJSON_IsString(v))
+		return cJSON_CreateString(v->valuestring);
+	if (cJSON_IsNumber(v))
+		return cJSON_CreateNumber(v->valuedouble);
+	if (cJSON_IsBool(v))
+		return cJSON_CreateBool(cJSON_IsTrue(v));
+	return cJSON_CreateNull();
+}
+
 static void *arena_malloc(size_t size)
 {
 	if (!current_arena)
@@ -192,9 +262,9 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 	if (!old_val) {
 		old_item = cJSON_CreateNull();
 	} else if (cJSON_IsObject(old_val)) {
-		old_item = cJSON_CreateObjectReference(old_val);
+		old_item = clone_shallow(old_val);
 	} else if (cJSON_IsArray(old_val)) {
-		old_item = cJSON_CreateArrayReference(old_val);
+		old_item = clone_shallow(old_val);
 	} else if (cJSON_IsString(old_val)) {
 		old_item = cJSON_CreateString(old_val->valuestring);
 	} else if (cJSON_IsNumber(old_val)) {
@@ -208,9 +278,9 @@ cJSON *create_change_array(const cJSON *old_val, const cJSON *new_val)
 	if (!new_val) {
 		new_item = cJSON_CreateNull();
 	} else if (cJSON_IsObject(new_val)) {
-		new_item = cJSON_CreateObjectReference(new_val);
+		new_item = clone_shallow(new_val);
 	} else if (cJSON_IsArray(new_val)) {
-		new_item = cJSON_CreateArrayReference(new_val);
+		new_item = clone_shallow(new_val);
 	} else if (cJSON_IsString(new_val)) {
 		new_item = cJSON_CreateString(new_val->valuestring);
 	} else if (cJSON_IsNumber(new_val)) {
@@ -246,9 +316,9 @@ cJSON *create_addition_array(const cJSON *new_val)
 	/* Reference new value to avoid deep copy */
 	cJSON *new_item = NULL;
 	if (cJSON_IsObject(new_val)) {
-		new_item = cJSON_CreateObjectReference(new_val);
+		new_item = clone_shallow(new_val);
 	} else if (cJSON_IsArray(new_val)) {
-		new_item = cJSON_CreateArrayReference(new_val);
+		new_item = clone_shallow(new_val);
 	} else if (cJSON_IsString(new_val)) {
 		new_item = cJSON_CreateString(new_val->valuestring);
 	} else if (cJSON_IsNumber(new_val)) {
@@ -281,9 +351,9 @@ cJSON *create_deletion_array(const cJSON *old_val)
 	/* Reference old value and add zeros for deletion */
 	cJSON *old_item = NULL;
 	if (cJSON_IsObject(old_val)) {
-		old_item = cJSON_CreateObjectReference(old_val);
+		old_item = cJSON_Duplicate(old_val, 1);
 	} else if (cJSON_IsArray(old_val)) {
-		old_item = cJSON_CreateArrayReference(old_val);
+		old_item = cJSON_Duplicate(old_val, 1);
 	} else if (cJSON_IsString(old_val)) {
 		old_item = cJSON_CreateString(old_val->valuestring);
 	} else if (cJSON_IsNumber(old_val)) {
