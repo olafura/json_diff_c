@@ -27,6 +27,147 @@ static __thread int json_patch_depth = 0;
 #define MAX_JSON_INPUT_SIZE (1024 * 1024)
 #endif
 
+/* Simple object key index for faster lookups during object diff */
+struct key_item {
+	const char *key;
+	cJSON *item;
+};
+
+static int cmp_key_item(const void *a, const void *b)
+{
+	const struct key_item *ka = (const struct key_item *)a;
+	const struct key_item *kb = (const struct key_item *)b;
+	if (ka->key == kb->key)
+		return 0;
+	if (!ka->key)
+		return -1;
+	if (!kb->key)
+		return 1;
+	return strcmp(ka->key, kb->key);
+}
+
+static int build_key_index(const cJSON *obj, struct key_item **out)
+{
+	int n = cJSON_GetArraySize(obj);
+	if (n <= 0) {
+		*out = NULL;
+		return 0;
+	}
+	struct key_item *arr =
+	    (struct key_item *)malloc((size_t)n * sizeof(*arr));
+	if (!arr) {
+		*out = NULL;
+		return 0;
+	}
+	int i = 0;
+	for (const cJSON *ch = obj->child; ch && i < n; ch = ch->next) {
+		arr[i].key = ch->string;
+		arr[i].item = (cJSON *)ch;
+		i++;
+	}
+	qsort(arr, (size_t)i, sizeof(*arr), cmp_key_item);
+	*out = arr;
+	return i;
+}
+
+static cJSON *index_get(struct key_item *arr, int n, const char *key)
+{
+	if (!arr || n <= 0 || !key)
+		return NULL;
+	int lo = 0, hi = n - 1;
+	while (lo <= hi) {
+		int mid = lo + (hi - lo) / 2;
+		int cmp = strcmp(key, arr[mid].key);
+		if (cmp == 0)
+			return arr[mid].item;
+		if (cmp < 0)
+			hi = mid - 1;
+		else
+			lo = mid + 1;
+	}
+	return NULL;
+}
+
+/* Transform array diffs { i: [obj], _i: [obj,0,0] } into nested diffs { i:
+ * diff(obj,obj2) } */
+static void transform_array_object_changes(cJSON *diff_obj,
+                                           const struct json_diff_options *opts)
+{
+	if (!diff_obj)
+		return;
+	/* First collect candidate indices where addition is [object] */
+	int cap = 8, count = 0;
+	int *idxs = (int *)malloc((size_t)cap * sizeof(int));
+	if (!idxs)
+		return;
+	for (cJSON *ch = diff_obj->child; ch; ch = ch->next) {
+		const char *k = ch->string;
+		if (!k || k[0] == '_' || strcmp(k, "_t") == 0)
+			continue;
+		if (!cJSON_IsArray(ch) || cJSON_GetArraySize(ch) != 1)
+			continue;
+		cJSON *v0 = cJSON_GetArrayItem(ch, 0);
+		if (!v0 || !cJSON_IsObject(v0))
+			continue;
+		char *endptr = NULL;
+		long idx = strtol(k, &endptr, 10);
+		if (endptr == k || *endptr != '\0' || idx < 0 || idx > INT_MAX)
+			continue;
+		if (count == cap) {
+			int newcap = cap * 2;
+			int *tmp =
+			    (int *)realloc(idxs, (size_t)newcap * sizeof(int));
+			if (!tmp) {
+				free(idxs);
+				return;
+			}
+			idxs = tmp;
+			cap = newcap;
+		}
+		idxs[count++] = (int)idx;
+	}
+
+	char keybuf[32], delbuf[32];
+	for (int i = 0; i < count; i++) {
+#ifdef __STDC_LIB_EXT1__
+		snprintf_s(keybuf, sizeof(keybuf), "%d", idxs[i]);
+		snprintf_s(delbuf, sizeof(delbuf), "_%d", idxs[i]);
+#else
+		snprintf(keybuf, sizeof(keybuf), "%d", idxs[i]);
+		snprintf(delbuf, sizeof(delbuf), "_%d", idxs[i]);
+#endif
+		cJSON *add = cJSON_GetObjectItem(diff_obj, keybuf);
+		cJSON *del = cJSON_GetObjectItem(diff_obj, delbuf);
+		if (!add || !del || !cJSON_IsArray(add) ||
+		    cJSON_GetArraySize(add) != 1)
+			continue;
+		cJSON *new_obj = cJSON_GetArrayItem(add, 0);
+		if (!new_obj || !cJSON_IsObject(new_obj))
+			continue;
+		if (!cJSON_IsArray(del) || cJSON_GetArraySize(del) != 3)
+			continue;
+		cJSON *old_obj = cJSON_GetArrayItem(del, 0);
+		cJSON *z1 = cJSON_GetArrayItem(del, 1);
+		cJSON *z2 = cJSON_GetArrayItem(del, 2);
+		if (!old_obj || !cJSON_IsObject(old_obj))
+			continue;
+		if (!z1 || !z2 || !cJSON_IsNumber(z1) || !cJSON_IsNumber(z2))
+			continue;
+		if (z1->valuedouble != 0 || z2->valuedouble != 0)
+			continue;
+
+		/* Compute nested diff */
+		cJSON *nested = json_diff(old_obj, new_obj, opts);
+		/* Remove deletion entry */
+		cJSON_DeleteItemFromObject(diff_obj, delbuf);
+		/* Replace addition with nested diff or remove if no changes */
+		cJSON_DeleteItemFromObject(diff_obj, keybuf);
+		if (nested) {
+			cJSON_AddItemToObject(diff_obj, keybuf, nested);
+		}
+	}
+	free(idxs);
+}
 /* Create a shallow clone of a value:
  * - Objects/arrays: new container with children added as references
  * - Primitives: new primitive with same value
@@ -553,9 +694,24 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 	}
 
 	if (has_changes) {
-		cJSON_AddStringToObject(diff_obj, ARRAY_MARKER,
-		                        ARRAY_MARKER_VALUE);
-		return diff_obj;
+		/* Optimize arrays-of-objects by merging add+del into nested
+		 * diffs */
+		transform_array_object_changes(diff_obj, opts);
+		/* Check if diff_obj still has any entries besides the marker */
+		bool non_marker = false;
+		for (cJSON *it = diff_obj->child; it; it = it->next) {
+			if (strcmp(it->string, ARRAY_MARKER) != 0) {
+				non_marker = true;
+				break;
+			}
+		}
+		if (non_marker) {
+			cJSON_AddStringToObject(diff_obj, ARRAY_MARKER,
+			                        ARRAY_MARKER_VALUE);
+			return diff_obj;
+		}
+		cJSON_Delete(diff_obj);
+		return NULL;
 	}
 
 	cJSON_Delete(diff_obj);
@@ -619,15 +775,21 @@ static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
 		goto finish;
 	}
 
-	/* Object diff */
+	/* Object diff with indexed lookups for better performance */
 	cJSON *diff_obj = cJSON_CreateObject();
 	if (!diff_obj)
 		goto finish;
 	{
 		bool has_changes = false;
-		for (const cJSON *li = left->child; li; li = li->next) {
-			const char *key = li->string;
-			cJSON *ri = cJSON_GetObjectItem(right, key);
+		struct key_item *right_index = NULL, *left_index = NULL;
+		int right_n = build_key_index(right, &right_index);
+		int left_n = build_key_index(left, &left_index);
+
+		/* Keys present in left: diff or deletion */
+		for (int i = 0; i < left_n; i++) {
+			const char *key = left_index[i].key;
+			cJSON *li = left_index[i].item;
+			cJSON *ri = index_get(right_index, right_n, key);
 			if (!ri) {
 				cJSON *d = create_deletion_array(li);
 				if (d) {
@@ -643,9 +805,11 @@ static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
 				}
 			}
 		}
-		for (const cJSON *ri = right->child; ri; ri = ri->next) {
-			const char *key = ri->string;
-			if (!cJSON_GetObjectItem(left, key)) {
+		/* Keys present only in right: additions */
+		for (int i = 0; i < right_n; i++) {
+			const char *key = right_index[i].key;
+			if (!index_get(left_index, left_n, key)) {
+				cJSON *ri = right_index[i].item;
 				cJSON *a = create_addition_array(ri);
 				if (a) {
 					cJSON_AddItemToObject(diff_obj, key, a);
@@ -653,6 +817,9 @@ static cJSON *do_json_diff(const cJSON *left, const cJSON *right,
 				}
 			}
 		}
+		free(right_index);
+		free(left_index);
+
 		if (has_changes)
 			result = diff_obj;
 		else
@@ -708,10 +875,67 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 	 */
 	int *replace_indices = NULL;
 	int replace_count = 0;
+	/* Collect jsondiffpatch move ops: _src: ["", dest, 3] */
+	struct move_op {
+		int src;
+		int dest;
+	};
+	struct move_op *moves = NULL;
+	int moves_count = 0;
+	int moves_cap = 0;
 	for (cJSON *it = diff->child; it; it = it->next) {
 		const char *k = it->string;
-		if (!k || k[0] == '_' || strcmp(k, ARRAY_MARKER) == 0)
+		if (!k || strcmp(k, ARRAY_MARKER) == 0)
 			continue;
+		if (k[0] == '_') {
+			/* Maybe a move op */
+			if (cJSON_IsArray(it) && cJSON_GetArraySize(it) == 3) {
+				cJSON *v0 = cJSON_GetArrayItem(it, 0);
+				cJSON *v1 = cJSON_GetArrayItem(it, 1);
+				cJSON *v2 = cJSON_GetArrayItem(it, 2);
+				if (v0 && cJSON_IsString(v0) && v1 &&
+				    cJSON_IsNumber(v1) && v2 &&
+				    cJSON_IsNumber(v2) &&
+				    (int)v2->valuedouble == 3) {
+					long s = strtol(k + 1, NULL, 10);
+					if (s >= 0 && s <= INT_MAX) {
+						if (moves_count == moves_cap) {
+							int newcap =
+							    moves_cap
+							        ? moves_cap * 2
+							        : 8;
+							struct move_op *nm =
+							    (struct move_op *)realloc(
+							        moves,
+							        (size_t)newcap *
+							            sizeof(
+							                *moves));
+							if (!nm) {
+								free(moves);
+								moves = NULL;
+								moves_count =
+								    moves_cap =
+								        0;
+							} else {
+								moves = nm;
+								moves_cap =
+								    newcap;
+							}
+						}
+						if (moves_cap > 0) {
+							moves[moves_count].src =
+							    (int)s;
+							moves[moves_count]
+							    .dest =
+							    (int)
+							        v1->valuedouble;
+							moves_count++;
+						}
+					}
+				}
+			}
+			continue;
+		}
 		if (!cJSON_IsArray(it) || cJSON_GetArraySize(it) != 1)
 			continue;
 		char *ep = NULL;
@@ -748,6 +972,18 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 			}
 			/* Safe cast after bounds check */
 			int index = (int)index_long;
+			/* Skip move ops encoded as ["", dest, 3] */
+			if (cJSON_IsArray(diff_item) &&
+			    cJSON_GetArraySize(diff_item) == 3) {
+				cJSON *v0 = cJSON_GetArrayItem(diff_item, 0);
+				cJSON *v2 = cJSON_GetArrayItem(diff_item, 2);
+				if (v0 && cJSON_IsString(v0) && v2 &&
+				    cJSON_IsNumber(v2) &&
+				    (int)v2->valuedouble == 3) {
+					diff_item = diff_item->next;
+					continue;
+				}
+			}
 			/* Skip deletion if we also have a single-element
 			 * addition at same index */
 			bool skip = false;
@@ -797,6 +1033,55 @@ static cJSON *patch_array(const cJSON *original, const cJSON *diff)
 	}
 	free(delete_indices);
 	free(replace_indices);
+
+	/* Apply moves: sort by dest ascending and move value-matching nodes */
+	if (moves_count > 0) {
+		/* simple insertion sort */
+		for (int a = 1; a < moves_count; a++) {
+			struct move_op key = moves[a];
+			int b = a - 1;
+			while (b >= 0 && moves[b].dest > key.dest) {
+				moves[b + 1] = moves[b];
+				b--;
+			}
+			moves[b + 1] = key;
+		}
+		for (int mi = 0; mi < moves_count; mi++) {
+			int src = moves[mi].src;
+			int dest = moves[mi].dest;
+			if (src < 0)
+				continue;
+			cJSON *src_item = cJSON_GetArrayItem(original, src);
+			if (!src_item)
+				continue;
+			int cur = -1;
+			int wsz = cJSON_GetArraySize(working_array);
+			for (int t = 0; t < wsz; t++) {
+				cJSON *cand =
+				    cJSON_GetArrayItem(working_array, t);
+				if (json_value_equal(cand, src_item, true)) {
+					cur = t;
+					break;
+				}
+			}
+			if (cur < 0)
+				continue;
+			cJSON *node =
+			    cJSON_DetachItemFromArray(working_array, cur);
+			if (!node)
+				continue;
+			if (dest < 0)
+				dest = 0;
+			int nsz = cJSON_GetArraySize(working_array);
+			if (dest >= nsz) {
+				cJSON_AddItemToArray(working_array, node);
+			} else {
+				cJSON_InsertItemInArray(working_array, dest,
+				                        node);
+			}
+		}
+		free(moves);
+	}
 
 	/* Now apply additions and modifications */
 	diff_item = diff->child;
