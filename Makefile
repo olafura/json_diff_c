@@ -73,11 +73,11 @@ tidy-fix:
 		| xargs -0 clang-tidy --format -p $(BUILD_DIR)
 
 format:
-	rg -l --glob '*.c' --glob '*.h' --null . \
+	rg -l --glob '*.c' --glob '*.h' --null src tests \
 		| xargs -0 clang-format -i
 
 format-check:
-	rg -l --glob '*.c' --glob '*.h' --null . \
+	rg -l --glob '*.c' --glob '*.h' --null src tests \
 		| xargs -0 clang-format --dry-run --Werror
 
 # Advanced testing targets

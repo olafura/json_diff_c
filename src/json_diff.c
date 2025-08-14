@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #define __STDC_WANT_LIB_EXT1__ 1
 #include "json_diff.h"
+#include "myers.h"
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
@@ -88,86 +89,7 @@ static cJSON *index_get(struct key_item *arr, int n, const char *key)
 	return NULL;
 }
 
-/* Transform array diffs { i: [obj], _i: [obj,0,0] } into nested diffs { i:
- * diff(obj,obj2) } */
-static void transform_array_object_changes(cJSON *diff_obj,
-                                           const struct json_diff_options *opts)
-{
-	if (!diff_obj)
-		return;
-	/* First collect candidate indices where addition is [object] */
-	int cap = 8, count = 0;
-	int *idxs = (int *)malloc((size_t)cap * sizeof(int));
-	if (!idxs)
-		return;
-	for (cJSON *ch = diff_obj->child; ch; ch = ch->next) {
-		const char *k = ch->string;
-		if (!k || k[0] == '_' || strcmp(k, "_t") == 0)
-			continue;
-		if (!cJSON_IsArray(ch) || cJSON_GetArraySize(ch) != 1)
-			continue;
-		cJSON *v0 = cJSON_GetArrayItem(ch, 0);
-		if (!v0 || !cJSON_IsObject(v0))
-			continue;
-		char *endptr = NULL;
-		long idx = strtol(k, &endptr, 10);
-		if (endptr == k || *endptr != '\0' || idx < 0 || idx > INT_MAX)
-			continue;
-		if (count == cap) {
-			int newcap = cap * 2;
-			int *tmp =
-			    (int *)realloc(idxs, (size_t)newcap * sizeof(int));
-			if (!tmp) {
-				free(idxs);
-				return;
-			}
-			idxs = tmp;
-			cap = newcap;
-		}
-		idxs[count++] = (int)idx;
-	}
-
-	char keybuf[32], delbuf[32];
-	for (int i = 0; i < count; i++) {
-#ifdef __STDC_LIB_EXT1__
-		snprintf_s(keybuf, sizeof(keybuf), "%d", idxs[i]);
-		snprintf_s(delbuf, sizeof(delbuf), "_%d", idxs[i]);
-#else
-		snprintf(keybuf, sizeof(keybuf), "%d", idxs[i]);
-		snprintf(delbuf, sizeof(delbuf), "_%d", idxs[i]);
-#endif
-		cJSON *add = cJSON_GetObjectItem(diff_obj, keybuf);
-		cJSON *del = cJSON_GetObjectItem(diff_obj, delbuf);
-		if (!add || !del || !cJSON_IsArray(add) ||
-		    cJSON_GetArraySize(add) != 1)
-			continue;
-		cJSON *new_obj = cJSON_GetArrayItem(add, 0);
-		if (!new_obj || !cJSON_IsObject(new_obj))
-			continue;
-		if (!cJSON_IsArray(del) || cJSON_GetArraySize(del) != 3)
-			continue;
-		cJSON *old_obj = cJSON_GetArrayItem(del, 0);
-		cJSON *z1 = cJSON_GetArrayItem(del, 1);
-		cJSON *z2 = cJSON_GetArrayItem(del, 2);
-		if (!old_obj || !cJSON_IsObject(old_obj))
-			continue;
-		if (!z1 || !z2 || !cJSON_IsNumber(z1) || !cJSON_IsNumber(z2))
-			continue;
-		if (z1->valuedouble != 0 || z2->valuedouble != 0)
-			continue;
-
-		/* Compute nested diff */
-		cJSON *nested = json_diff(old_obj, new_obj, opts);
-		/* Remove deletion entry */
-		cJSON_DeleteItemFromObject(diff_obj, delbuf);
-		/* Replace addition with nested diff or remove if no changes */
-		cJSON_DeleteItemFromObject(diff_obj, keybuf);
-		if (nested) {
-			cJSON_AddItemToObject(diff_obj, keybuf, nested);
-		}
-	}
-	free(idxs);
-}
+/* arrays-of-objects post-transform moved to myers.c */
 /* Create a shallow clone of a value:
  * - Objects/arrays: new container with children added as references
  * - Primitives: new primitive with same value
@@ -527,196 +449,7 @@ cJSON *create_deletion_array(const cJSON *old_val)
  *
  * Return: diff object or NULL if arrays are equal
  */
-static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
-                                const struct json_diff_options *opts)
-{
-	int left_size = cJSON_GetArraySize(left);
-	int right_size = cJSON_GetArraySize(right);
-
-	/* Quick equality check */
-	if (left_size == right_size) {
-		bool all_equal = true;
-		for (int k = 0; k < left_size; k++) {
-			cJSON *li = cJSON_GetArrayItem(left, k);
-			cJSON *ri = cJSON_GetArrayItem(right, k);
-			if (!json_value_equal(li, ri, opts->strict_equality)) {
-				all_equal = false;
-				break;
-			}
-		}
-		if (all_equal)
-			return NULL;
-	}
-
-	cJSON *diff_obj = cJSON_CreateObject();
-	if (!diff_obj)
-		return NULL;
-
-	bool has_changes = false;
-	int i = 0, j = 0; /* indices for left and right */
-	char index_str[32];
-
-	while (i < left_size && j < right_size) {
-		cJSON *li = cJSON_GetArrayItem(left, i);
-		cJSON *ri = cJSON_GetArrayItem(right, j);
-
-		if (json_value_equal(li, ri, opts->strict_equality)) {
-			i++;
-			j++;
-			continue;
-		}
-
-		/* Lookahead: deletion */
-		if ((i + 1) < left_size) {
-			cJSON *li1 = cJSON_GetArrayItem(left, i + 1);
-			if (json_value_equal(li1, ri, opts->strict_equality)) {
-				/* Deletion of left[i] */
-#ifdef __STDC_LIB_EXT1__
-				snprintf_s(index_str, sizeof(index_str), "_%d",
-				           i);
-#else
-				snprintf(index_str, sizeof(index_str), "_%d",
-				         i);
-#endif
-				cJSON *del_array = create_deletion_array(li);
-				if (del_array) {
-					cJSON_AddItemToObject(
-					    diff_obj, index_str, del_array);
-					has_changes = true;
-				}
-				i++;
-				continue;
-			}
-		}
-
-		/* Lookahead: insertion */
-		if ((j + 1) < right_size) {
-			cJSON *rj1 = cJSON_GetArrayItem(right, j + 1);
-			if (json_value_equal(li, rj1, opts->strict_equality)) {
-				/* Insertion of right[j] at i */
-#ifdef __STDC_LIB_EXT1__
-				snprintf_s(index_str, sizeof(index_str), "%d",
-				           i);
-#else
-				snprintf(index_str, sizeof(index_str), "%d", i);
-#endif
-				cJSON *ins_array = create_addition_array(ri);
-				if (ins_array) {
-					cJSON_AddItemToObject(
-					    diff_obj, index_str, ins_array);
-					has_changes = true;
-				}
-				j++;
-				continue;
-			}
-		}
-
-		/* Replacement: either nested diff for objects or add+del pair
-		 */
-		if (cJSON_IsObject(li) && cJSON_IsObject(ri)) {
-			cJSON *sub = json_diff(li, ri, opts);
-			if (sub) {
-#ifdef __STDC_LIB_EXT1__
-				snprintf_s(index_str, sizeof(index_str), "%d",
-				           i);
-#else
-				snprintf(index_str, sizeof(index_str), "%d", i);
-#endif
-				cJSON_AddItemToObject(diff_obj, index_str, sub);
-				has_changes = true;
-			}
-		} else {
-			cJSON *add_array = create_addition_array(ri);
-			cJSON *del_array = create_deletion_array(li);
-			if (add_array && del_array) {
-#ifdef __STDC_LIB_EXT1__
-				(void)snprintf_s(index_str, sizeof(index_str),
-				                 "%d", i);
-#else
-				(void)snprintf(index_str, sizeof(index_str),
-				               "%d", i);
-#endif
-				cJSON_AddItemToObject(diff_obj, index_str,
-				                      add_array);
-#ifdef __STDC_LIB_EXT1__
-				snprintf_s(index_str, sizeof(index_str), "_%d",
-				           i);
-#else
-				snprintf(index_str, sizeof(index_str), "_%d",
-				         i);
-#endif
-				cJSON_AddItemToObject(diff_obj, index_str,
-				                      del_array);
-				has_changes = true;
-			} else {
-				if (add_array)
-					cJSON_Delete(add_array);
-				if (del_array)
-					cJSON_Delete(del_array);
-			}
-		}
-
-		i++;
-		j++;
-	}
-
-	/* Remaining deletions */
-	while (i < left_size) {
-		cJSON *li = cJSON_GetArrayItem(left, i);
-		cJSON *del_array = create_deletion_array(li);
-		if (del_array) {
-#ifdef __STDC_LIB_EXT1__
-			snprintf_s(index_str, sizeof(index_str), "_%d", i);
-#else
-			snprintf(index_str, sizeof(index_str), "_%d", i);
-#endif
-			cJSON_AddItemToObject(diff_obj, index_str, del_array);
-			has_changes = true;
-		}
-		i++;
-	}
-
-	/* Remaining insertions */
-	while (j < right_size) {
-		cJSON *ri = cJSON_GetArrayItem(right, j);
-		cJSON *ins_array = create_addition_array(ri);
-		if (ins_array) {
-#ifdef __STDC_LIB_EXT1__
-			snprintf_s(index_str, sizeof(index_str), "%d", i);
-#else
-			snprintf(index_str, sizeof(index_str), "%d", i);
-#endif
-			cJSON_AddItemToObject(diff_obj, index_str, ins_array);
-			has_changes = true;
-		}
-		j++;
-		i++;
-	}
-
-	if (has_changes) {
-		/* Optimize arrays-of-objects by merging add+del into nested
-		 * diffs */
-		transform_array_object_changes(diff_obj, opts);
-		/* Check if diff_obj still has any entries besides the marker */
-		bool non_marker = false;
-		for (cJSON *it = diff_obj->child; it; it = it->next) {
-			if (strcmp(it->string, ARRAY_MARKER) != 0) {
-				non_marker = true;
-				break;
-			}
-		}
-		if (non_marker) {
-			cJSON_AddStringToObject(diff_obj, ARRAY_MARKER,
-			                        ARRAY_MARKER_VALUE);
-			return diff_obj;
-		}
-		cJSON_Delete(diff_obj);
-		return NULL;
-	}
-
-	cJSON_Delete(diff_obj);
-	return NULL;
-}
+/* legacy myers implementation moved to src/myers.c */
 
 /**
  * diff_arrays - Create diff for two cJSON arrays
@@ -729,7 +462,7 @@ static cJSON *myers_diff_arrays(const cJSON *left, const cJSON *right,
 static cJSON *diff_arrays(const cJSON *left, const cJSON *right,
                           const struct json_diff_options *opts)
 {
-	return myers_diff_arrays(left, right, opts);
+	return json_myers_array_diff(left, right, opts);
 }
 
 /**

@@ -36,7 +36,7 @@ endif
 
 # Library
 json_diff_lib = static_library('jsondiff',
-  'src/json_diff.c',
+  ['src/json_diff.c', 'src/myers.c'],
   dependencies : base_deps,
   install : true,
   install_dir : get_option('libdir')
@@ -107,6 +107,15 @@ behavior_verification_exe = executable('test_behavior_verification',
 
 # Register behavior verification test
 test('behavior_verification_test', behavior_verification_exe, workdir : meson.current_source_dir())
+
+# Myers SES focused tests
+myers_test_exe = executable('test_myers',
+  'tests/test_myers.c',
+  link_with : json_diff_lib,
+  dependencies : base_deps,
+  install : false
+)
+test('myers_test', myers_test_exe, workdir : meson.current_source_dir())
 
 # Property-based test executable using theft
 # Only build if theft library is available
